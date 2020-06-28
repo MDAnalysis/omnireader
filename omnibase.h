@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #define PAGESIZE 4194304
