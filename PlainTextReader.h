@@ -40,18 +40,17 @@ public:
       page_ptr = page;
       page_occupancy = page + amount;
 
-      fprintf(stderr, "%llu\n", amount);
-
       return amount;
     }
 
     void rewind() {
       ::rewind(fp);
-      history = 0;
 
-      unsigned long long amount = fread(page, (page_end - page), 1, fp);
+      history = 0;
       page_ptr = page;
-      page_occupancy = page + amount;
+      page_occupancy = page;
+
+      refill_page();
     }
 };
 

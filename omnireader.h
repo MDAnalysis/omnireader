@@ -6,9 +6,22 @@
 #define OMNIREADER_OMNIREADER_H
 
 #include "PlainTextReader.h"
+#include "BZ2Reader.h"
 
-OmniReader* GetReader() {
-  return new PlainTextReader;
+enum Format {
+    PlainText,
+    BZ2,
+};
+
+OmniReader* GetReader(Format option) {
+  switch (option) {
+    case PlainText:
+      return new PlainTextReader;
+    case BZ2:
+      return new BZ2Reader;
+    default:
+      return NULL;
+  }
 }
 
 #endif //OMNIREADER_OMNIREADER_H
