@@ -4,9 +4,8 @@
 #include "omnibase.h"
 
 void OmniReader::prepare_next() {
+  nextline.clear();
   if (page_ptr == nullptr) {
-    fputs("Ptr was null\n", stderr);
-    nextline.clear();
     return;
   }
 
@@ -80,8 +79,9 @@ void OmniReader::seek(unsigned long long where, unsigned char whence) {
     unsigned long long end = tell() + (page_occupancy - page_ptr);
     if (where < end) {
       page_ptr = page + (where - history);
-      return;
+      break;
     }
     refill_page();
   }
+  prepare_next();
 }
