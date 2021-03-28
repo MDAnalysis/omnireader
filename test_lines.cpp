@@ -2,16 +2,37 @@
 // Created by richard on 27/06/2020.
 //
 
+#include <vector>
 #include <string>
 
 #include "omnireader.h"
 
-void PrintLines(OmniReader* r) {
+std::vector<int> PrintLines(OmniReader* r) {
+  std::vector<int> lengths;
+
   while (!r->at_eof()) {
     std::string l = r->getline();
+    lengths.push_back(l.size());
     fprintf(stderr, "%lu\t", l.size());
     fprintf(stderr, ">%s<\n", l.c_str());
   }
+
+  return lengths;
+}
+
+bool compare_lengths(std::vector<int>& ref, std::vector<int>& other) {
+  if (ref.size() != other.size()) {
+    fprintf(stderr, "Size mismatch: %zu %zu\n", ref.size(), other.size());
+    return false;
+  }
+
+  for (unsigned int i=0; i<ref.size(); ++i) {
+    if (ref[i] != other[i]) {
+      fprintf(stderr, "Line length mismatch at %d: %d vs %d\n", i, ref[i], other[i]);
+      return false;
+    }
+  }
+  return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -27,7 +48,7 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Failed to open file: %s\n", argv[1]);
     return 1;
   }
-  PrintLines(r1);
+  std::vector<int> ref_lengths = PrintLines(r1);
   delete r1;
 
   std::string bz2fname(fname);
@@ -37,7 +58,7 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Failed to open bz2 file\n");
     return 1;
   }
-  PrintLines(r2);
+  std::vector<int> bz2_lengths = PrintLines(r2);
   delete r2;
 
   std::string gzfname(fname);
@@ -47,8 +68,17 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Failed to open gz file\n");
     return 1;
   }
-  PrintLines(r3);
+  std::vector<int> gz_lengths = PrintLines(r3);
   delete r3;
+
+  if (!compare_lengths(ref_lengths, gz_lengths)) {
+    fputs("Failed for GZip\n", stderr);
+    return 2;
+  }
+  if (!compare_lengths(ref_lengths, bz2_lengths)) {
+    fputs("Failed for BZ2\n", stderr);
+    return 2;
+  }
 
   return 0;
 }
