@@ -10,14 +10,14 @@
 
 #include "omnibase.h"
 
-class BZ2Reader : public OmniReader {
+class BZ2Reader final : public OmniReader {
 private:
     FILE* fp;
     BZFILE* bzfp;
 public:
     BZ2Reader() : OmniReader(), fp(nullptr), bzfp(nullptr) {};
 
-    ~BZ2Reader() {
+    ~BZ2Reader() final {
       int error;
       if (bzfp)
         BZ2_bzReadClose(&error, bzfp);

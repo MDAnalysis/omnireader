@@ -25,6 +25,7 @@ public:
       memset(page, '\0', PAGESIZE);
       nextline.reserve(255);
     }
+    virtual ~OmniReader() = default;
 
     virtual bool open(const char* fname) = 0;
     std::string getline();

@@ -9,13 +9,13 @@
 
 #include "omnibase.h"
 
-class GZReader : public OmniReader {
+class GZReader final : public OmniReader {
 private:
     gzFile gzfp;
 public:
     GZReader() : OmniReader(), gzfp(nullptr) {}
 
-    ~GZReader() {
+    ~GZReader() final {
       if (gzfp)
         gzclose(gzfp);
     }

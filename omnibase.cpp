@@ -49,14 +49,6 @@ unsigned long long OmniReader::refill_page() {
   return amount;
 }
 
-
-// Peek at at least *amount* bytes, but limited to PAGESIZE
-const char* OmniReader::peek(unsigned long long amount) {
-  if (amount > (page_occupancy - page_ptr))
-    refill_page();
-  return page_ptr;
-}
-
 void OmniReader::seek(unsigned long long where, unsigned char whence) {
   // always SEEK_SET for now
   if (whence != SEEK_SET)
@@ -65,23 +57,22 @@ void OmniReader::seek(unsigned long long where, unsigned char whence) {
   if (where == tell())
     return;
 
-  // is where behind us?
-  if (where < tell()) {
-    if (where >= history) {  // lies within current page
-      page_ptr = page + (where - history);
-      return;
-    }
-    else
-      rewind();
+  if (where < tell() && where >= history) {
+    // lies within current page
+    page_ptr = page + (where - history);
   }
-  // seek forward to victory!
-  while (!at_eof()) {
-    unsigned long long end = tell() + (page_occupancy - page_ptr);
-    if (where < end) {
-      page_ptr = page + (where - history);
-      break;
+  else {
+    if (where < tell())
+      rewind();
+    // seek forward to victory!
+    while (!at_eof()) {
+      unsigned long long end = tell() + (page_occupancy - page_ptr);
+      if (where < end) {
+        page_ptr = page + (where - history);
+        break;
+      }
+      refill_page();
     }
-    refill_page();
   }
   prepare_next();
 }

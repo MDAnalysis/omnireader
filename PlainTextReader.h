@@ -12,12 +12,13 @@
 
 
 
-class PlainTextReader : public OmniReader {
+class PlainTextReader final : public OmniReader {
 private:
     FILE* fp;
 public:
     PlainTextReader() : OmniReader(), fp(nullptr) {}
-    ~PlainTextReader() {
+
+    ~PlainTextReader() final {
       if (fp != nullptr)
         fclose(fp);
     }
