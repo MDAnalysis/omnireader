@@ -7,7 +7,9 @@
 
 #include "omnireader.h"
 
-std::vector<int> PrintLines(OmniReader* r) {
+using namespace OmniReader;
+
+std::vector<int> PrintLines(Reader* r) {
   std::vector<int> lengths;
 
   while (!r->at_eof()) {
@@ -43,7 +45,7 @@ int main(int argc, char* argv[]) {
 
   const char* fname = argv[1];
 
-  OmniReader* r1 = GetReader(Format::PlainText);
+  OmniReader::Reader* r1 = GetReader(Format::PlainText);
   if (!r1->open(fname)) {
     fprintf(stderr, "Failed to open file: %s\n", argv[1]);
     return 1;
@@ -53,7 +55,7 @@ int main(int argc, char* argv[]) {
 
   std::string bz2fname(fname);
   bz2fname.append(".bz2");
-  OmniReader* r2 = GetReader(Format::BZ2);
+  OmniReader::Reader* r2 = GetReader(Format::BZ2);
   if (!r2->open(bz2fname.c_str())) {
     fprintf(stderr, "Failed to open bz2 file\n");
     return 1;
@@ -63,7 +65,7 @@ int main(int argc, char* argv[]) {
 
   std::string gzfname(fname);
   gzfname.append(".gz");
-  OmniReader* r3 = GetReader(Format::GZ);
+  OmniReader::Reader* r3 = GetReader(Format::GZ);
   if (!r3->open(gzfname.c_str())) {
     fprintf(stderr, "Failed to open gz file\n");
     return 1;

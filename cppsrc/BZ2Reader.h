@@ -8,14 +8,14 @@
 #include <cstring>
 #include <bzlib.h>
 
-#include "omnibase.h"
+#include "omnireader.h"
 
-class BZ2Reader final : public OmniReader {
+class BZ2Reader final : public OmniReader::Reader {
 private:
     FILE* fp;
     BZFILE* bzfp;
 public:
-    BZ2Reader() : OmniReader(), fp(nullptr), bzfp(nullptr) {};
+    BZ2Reader() : Reader(), fp(nullptr), bzfp(nullptr) {};
 
     ~BZ2Reader() final {
       int error;

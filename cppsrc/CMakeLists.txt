@@ -3,10 +3,16 @@ project(omnireader)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_library(omnireader SHARED omnireader.h
-        omnibase.cpp omnibase.h
-        PlainTextReader.cpp PlainTextReader.h
-        BZ2Reader.h)
+add_library(omnireader SHARED omnireader.h omnireader.cpp)
+
+set_target_properties(omnireader
+        PROPERTIES PUBLIC_HEADER "omnireader.h")
+
+install(TARGETS omnireader.h
+        DESTINATION lib
+        PUBLIC_HEADER DESTINATION include
+        )
+
 target_include_directories(omnireader PUBLIC /home/richard/miniconda3/envs/mda/include)
 target_link_libraries(omnireader /home/richard/miniconda3/envs/mda/lib/libbz2.so)
 target_link_libraries(omnireader /home/richard/miniconda3/envs/mda/lib/libz.a)
@@ -14,3 +20,4 @@ target_link_libraries(omnireader /home/richard/miniconda3/envs/mda/lib/libz.a)
 add_executable(test_lines test_lines.cpp)
 target_include_directories(test_lines PUBLIC /home/richard/miniconda3/envs/mda/include)
 target_link_libraries(test_lines omnireader)
+

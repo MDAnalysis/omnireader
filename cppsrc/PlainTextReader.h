@@ -8,15 +8,15 @@
 #include <cstdio>
 #include <cstring>
 
-#include "omnibase.h"
+#include "omnireader.h"
 
 
 
-class PlainTextReader final : public OmniReader {
+class PlainTextReader final : public OmniReader::Reader {
 private:
     FILE* fp;
 public:
-    PlainTextReader() : OmniReader(), fp(nullptr) {}
+    PlainTextReader() : Reader(), fp(nullptr) {}
 
     ~PlainTextReader() final {
       if (fp != nullptr)

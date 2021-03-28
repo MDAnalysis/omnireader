@@ -7,13 +7,13 @@
 
 #include <zlib.h>
 
-#include "omnibase.h"
+#include "omnireader.h"
 
-class GZReader final : public OmniReader {
+class GZReader final : public OmniReader::Reader {
 private:
     gzFile gzfp;
 public:
-    GZReader() : OmniReader(), gzfp(nullptr) {}
+    GZReader() : Reader(), gzfp(nullptr) {}
 
     ~GZReader() final {
       if (gzfp)
