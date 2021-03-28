@@ -29,7 +29,6 @@ public:
     virtual bool open(const char* fname) = 0;
     std::string getline();
     bool at_eof() const { return nextline.empty(); };
-    const char* peek(unsigned long long);
     void seek(unsigned long long, unsigned char);
     virtual void rewind() = 0;
     unsigned long long tell() { return history + (page_ptr - page); };
