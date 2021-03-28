@@ -2,35 +2,42 @@
 // Created by richard on 27/06/2020.
 //
 
-#include <bzlib.h>
-
 #include "omnireader.h"
 
 void PrintLines(OmniReader* r) {
-  for (unsigned char i=0; i<9; ++i) {
-    fprintf(stdout, "---\n");
-    const char* l = r->getline();
-    if (l != NULL) {
-      fprintf(stdout, "%lu\n", strlen(l));
-      fprintf(stdout, ">%s<\n", l);
-    }
-    else
-      fprintf(stdout, "Got null\n");
-    fprintf(stdout, "---\n");
+  while (!r->at_eof()) {
+    std::string l = r->getline();
+    fprintf(stderr, "%lu\t", l.size());
+    fprintf(stderr, ">%s<\n", l.c_str());
   }
 }
 
 int main(int argc, char* argv[]) {
-  OmniReader* r;
 
-  r = GetReader(BZ2);
+  PlainTextReader* r1 = (PlainTextReader*) GetReader(Format::PlainText);
 
-  if (!r->open(argv[1])) {
+  if (!r1->open(argv[1])) {
     fprintf(stderr, "Failed to open file: %s\n", argv[1]);
     return 1;
   }
 
-  PrintLines(r);
+  PrintLines(r1);
+
+  delete r1;
+
+  BZ2Reader* r2 = (BZ2Reader*) GetReader(Format::BZ2);
+  if (!r2->open("/home/richard/test/omni/test.txt.bz2")) {
+    fprintf(stderr, "Failed to open bz2 file\n");
+    return 1;
+  }
+  PrintLines(r2);
+
+  GZReader gz;
+  if (!gz.open("/home/richard/test/omni/test.txt.gz")) {
+    fprintf(stderr, "Failed to open gz file\n");
+    return 1;
+  }
+  PrintLines(&gz);
 
   return 0;
 }

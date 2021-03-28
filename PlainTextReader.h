@@ -16,40 +16,40 @@ class PlainTextReader : public OmniReader {
 private:
     FILE* fp;
 public:
-    PlainTextReader() : OmniReader(), fp(NULL) {}
-
-    bool open(const char* fname) {
-      FILE* tmp = fopen(fname, "rb");
-      if (tmp == NULL)
-        return false;
-
-      fp = tmp;
-      return (refill_page() != 0);
+    PlainTextReader() : OmniReader(), fp(nullptr) {}
+    ~PlainTextReader() {
+      if (fp != nullptr)
+        fclose(fp);
     }
 
-    inline unsigned long long refill_page() {
-      unsigned long long used = page_ptr - page;
-      unsigned long long unused = page_occupancy - page_ptr;
+    bool open(const char* fname) final {
+      FILE* tmp = fopen(fname, "rb");
+      if (tmp == nullptr) {
+        fprintf(stderr, "Error: Failed to open file: %s\n", fname);
+        return false;
+      }
 
-      history += used;
+      fp = tmp;
+      eof = false;
+      refill_page();
+      prepare_next();
 
-      memmove(page, page_ptr, unused);
+      return !at_eof();
+    }
 
-      unsigned long long amount = fread(page, 1, (page_end - page) - unused, fp);
-      page[amount] = '\0';
-      page_ptr = page;
-      page_occupancy = page + amount;
+    inline unsigned long long fill_page() final {
+      unsigned long long amount = fread(page, 1, (page_end - page), fp);
 
       return amount;
     }
 
-    void rewind() {
+    void rewind() final {
       ::rewind(fp);
 
       history = 0;
       page_ptr = page;
       page_occupancy = page;
-
+      eof = false;
       refill_page();
     }
 };

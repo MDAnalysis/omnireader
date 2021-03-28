@@ -13,40 +13,32 @@ class GZReader : public OmniReader {
 private:
     gzFile gzfp;
 public:
-    GZReader() : OmniReader(), gzfp(NULL) {}
+    GZReader() : OmniReader(), gzfp(nullptr) {}
 
     ~GZReader() {
       if (gzfp)
         gzclose(gzfp);
     }
 
-    bool open(const char* fname) {
+    bool open(const char* fname) final {
       gzFile tmp = gzopen(fname, "r");
       if (!tmp)
         return false;
       gzfp = tmp;
 
-      return (refill_page() != 0);
+      eof = false;
+      prepare_next();
+
+      return !at_eof();
     }
 
-    unsigned long long refill_page() {
-      unsigned long long used = page_ptr - page;
-      unsigned long long unused = page_occupancy - page_ptr;
-
-      history += used;
-
-      memmove(page, page_ptr, unused);
-
-      unsigned long long amount = gzread(gzfp, page, (page_end - page) - unused);
-
-      page[amount] = '\0';
-      page_ptr = page;
-      page_occupancy = page + amount;
+    unsigned long long fill_page() final {
+      unsigned long long amount = gzread(gzfp, page, (page_end - page));
 
       return amount;
     }
 
-    void rewind() {
+    void rewind() final {
       gzrewind(gzfp);
 
       history = 0;

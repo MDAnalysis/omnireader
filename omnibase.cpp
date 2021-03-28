@@ -3,23 +3,55 @@
 
 #include "omnibase.h"
 
-// Return pointer to at least next full line
-const char* OmniReader::getline() {
+void OmniReader::prepare_next() {
+  if (page_ptr == nullptr) {
+    fputs("Ptr was null\n", stderr);
+    nextline.clear();
+    return;
+  }
+
   char* nextl = (char*) memchr(page_ptr, '\n', page_occupancy - page_ptr);
-  if (nextl == NULL) {
+  if (nextl == nullptr) {
+    nextline.append(page_ptr, page_occupancy - page_ptr);
     refill_page();
     nextl = (char*) memchr(page_ptr, '\n', page_occupancy - page_ptr);
   }
   // nextl is either NULL or start of next line
-  char* ret = page_ptr;
-  if (nextl != NULL) // only advance on hit
+  if (nextl != nullptr) { // only advance on hit
+    nextline.append(page_ptr, nextl + 1 - page_ptr);
     page_ptr = nextl + 1;
+  }
+  else {
+    page_ptr = nullptr;
+  }
+}
 
-  return ret;
+std::string OmniReader::getline() {
+  if (!at_eof()) {
+    std::string ret(nextline);
+    nextline.clear();
+    prepare_next();
+
+    return ret;
+  } else
+    return std::string();
+}
+
+unsigned long long OmniReader::refill_page() {
+  history += page_occupancy - page;
+
+  unsigned long long amount = fill_page();
+
+  eof = (amount == 0);
+  page[amount] = '\0';
+  page_ptr = page;
+  page_occupancy = page + amount;
+
+  return amount;
 }
 
 
-// Peek at at least *amount* bytes
+// Peek at at least *amount* bytes, but limited to PAGESIZE
 const char* OmniReader::peek(unsigned long long amount) {
   if (amount > (page_occupancy - page_ptr))
     refill_page();
@@ -44,13 +76,12 @@ void OmniReader::seek(unsigned long long where, unsigned char whence) {
       rewind();
   }
   // seek forward to victory!
-  bool eof = false;
-  while (!eof) {
+  while (!at_eof()) {
     unsigned long long end = tell() + (page_occupancy - page_ptr);
     if (where < end) {
       page_ptr = page + (where - history);
       return;
     }
-    eof = (refill_page() == 0);
+    refill_page();
   }
 }

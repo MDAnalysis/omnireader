@@ -9,36 +9,31 @@
 #define PAGESIZE 4194304
 
 class OmniReader {
+protected:
+    char page[PAGESIZE];  // where data is stored
+    char* page_ptr;  // current head onto data
+    char* page_occupancy;  // size of data stored
+    char* page_end;  // end of work buffer
+    unsigned long long history; // total bytes not in page that we've progressed past
+    bool eof;  // is file active?
+    std::string nextline;  // next line ready to go
+    void prepare_next();  // get the next line ready, sets EOF
+    unsigned long long refill_page();
+
 public:
-    OmniReader() : page(NULL), page_occupancy(NULL), page_ptr(NULL), page_end(NULL), history(0) {
-      char* tmp = (char*) malloc(PAGESIZE + 1);
-      if (tmp) {
-        page = tmp;
-        page_ptr = page;
-        page_occupancy = page;
-        page_end = page + PAGESIZE;
-        memset(page, 0, PAGESIZE + 1);
-      }
+    OmniReader() : page(), page_ptr(page), page_occupancy(page), page_end(page + PAGESIZE), history(0), eof(true) {
+      memset(page, '\0', PAGESIZE);
+      nextline.reserve(255);
     }
-    ~OmniReader() {
-      if (page)
-        free(page);
-    }
+
     virtual bool open(const char* fname) = 0;
-    const char* getline();
+    std::string getline();
+    bool at_eof() const { return nextline.empty(); };
     const char* peek(unsigned long long);
     void seek(unsigned long long, unsigned char);
     virtual void rewind() = 0;
     unsigned long long tell() { return history + (page_ptr - page); };
 private:
-    virtual inline unsigned long long refill_page() = 0;
-
-protected:
-    char* page;
-    char* page_ptr;
-    char* page_occupancy;
-    char* page_end;
-    unsigned long long history;
-
+    virtual inline unsigned long long fill_page() = 0;
 };
 #endif //OMNIREADER_OMNIBASE_H

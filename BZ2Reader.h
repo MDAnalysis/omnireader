@@ -15,7 +15,7 @@ private:
     FILE* fp;
     BZFILE* bzfp;
 public:
-    BZ2Reader() : OmniReader(), fp(NULL), bzfp(NULL) {};
+    BZ2Reader() : OmniReader(), fp(nullptr), bzfp(nullptr) {};
 
     ~BZ2Reader() {
       int error;
@@ -25,7 +25,7 @@ public:
         fclose(fp);
     }
 
-    bool open(const char* fname) {
+    bool open(const char* fname) final {
       int error;
       FILE* tmp;
       tmp = fopen(fname, "r");
@@ -35,41 +35,31 @@ public:
       }
       fp = tmp;
 
-      bzfp = BZ2_bzReadOpen(&error, fp, 0, 0, NULL, 0);
+      bzfp = BZ2_bzReadOpen(&error, fp, 0, 0, nullptr, 0);
       if (error != BZ_OK) {
         fprintf(stderr, "Failed bzReadOpen\n");
         return false;
       }
 
-      return (refill_page() != 0);
+      eof = false;
+      prepare_next();
+
+      return !at_eof();
     }
 
-    inline unsigned long long refill_page() {
-      unsigned long long used = page_ptr - page;
-      unsigned long long unused = page_occupancy - page_ptr;
-
-      history += used;
-
-      memmove(page, page_ptr, unused);
-
+    inline unsigned long long fill_page() final {
       int error;
-      unsigned int amount = BZ2_bzRead(&error, bzfp, (page + unused), (int)(page_end - page));
-      fprintf(stderr, "bzerr: %d\n", error);
-      // TODO: Check error, detect EOF early?
-      page[amount] = '\0';
-      page_ptr = page;
-      page_occupancy = page + amount;
-
-      fprintf(stderr, "Got %d bytes\n", amount);
+      unsigned int amount = BZ2_bzRead(&error, bzfp, page, (int)(page_end - page));
+      // TODO: Deal with error codes
 
       return amount;
     }
 
-    void rewind() {
+    void rewind() final {
       int error;
       BZ2_bzReadClose(&error, bzfp);
       ::rewind(fp);
-      bzfp = BZ2_bzReadOpen(&error, fp, 0, 0, NULL, 0);
+      bzfp = BZ2_bzReadOpen(&error, fp, 0, 0, nullptr, 0);
 
       history = 0;
       page_ptr = page;

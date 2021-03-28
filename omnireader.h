@@ -11,12 +11,12 @@
 #include "GZReader.h"
 
 enum Format {
-    PlainText,
-    BZ2,
-    GZ,
+    PlainText=0,
+    BZ2=1,
+    GZ=2,
 };
 
-OmniReader* GetReader(Format option) {
+OmniReader* GetReader(int option) {
   switch (option) {
     case PlainText:
       return new PlainTextReader();
@@ -25,7 +25,7 @@ OmniReader* GetReader(Format option) {
     case GZ:
       return new GZReader();
     default:
-      return NULL;
+      return nullptr;
   }
 }
 
