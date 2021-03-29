@@ -1,23 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
-project(omnireader)
 
-set(CMAKE_CXX_STANDARD 11)
+find_package(ZLIB REQUIRED)
+find_package(BZip2 REQUIRED)
 
 add_library(omnireader SHARED omnireader.h omnireader.cpp)
+
+target_link_libraries(omnireader ${BZIP2_LIBRARIES})
+target_include_directories(omnireader PRIVATE ${BZIP2_INCLUDE_DIRS})
+target_link_libraries(omnireader ${ZLIB_LIBRARIES})
+target_include_directories(omnireader PRIVATE ${ZLIB_INCLUDE_DIRS})
 
 set_target_properties(omnireader
         PROPERTIES PUBLIC_HEADER "omnireader.h")
 
-install(TARGETS omnireader.h
+install(TARGETS omnireader
         DESTINATION lib
         PUBLIC_HEADER DESTINATION include
         )
 
-target_include_directories(omnireader PUBLIC /home/richard/miniconda3/envs/mda/include)
-target_link_libraries(omnireader /home/richard/miniconda3/envs/mda/lib/libbz2.so)
-target_link_libraries(omnireader /home/richard/miniconda3/envs/mda/lib/libz.a)
-
 add_executable(test_lines test_lines.cpp)
-target_include_directories(test_lines PUBLIC /home/richard/miniconda3/envs/mda/include)
 target_link_libraries(test_lines omnireader)
 
