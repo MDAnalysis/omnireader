@@ -21,3 +21,5 @@ install(TARGETS omnireader
 add_executable(test_lines test_lines.cpp)
 target_link_libraries(test_lines omnireader)
 
+add_executable(test_seekntell test_seekntell.cpp)
+target_link_libraries(test_seekntell omnireader)

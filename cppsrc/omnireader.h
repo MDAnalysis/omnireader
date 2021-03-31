@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <string.h>
+#include <cstring>
 
 namespace OmniReader {
 
@@ -19,6 +19,25 @@ namespace OmniReader {
 
 #define PAGESIZE 4194304
     class Reader {
+    public:
+        Reader() : page(), page_ptr(page), page_occupancy(page), page_end(page + PAGESIZE), history(0), eof(true) {
+          memset(page, '\0', PAGESIZE);
+          nextline.reserve(255);
+        }
+        virtual ~Reader() = default;
+        // Returns success on opening a file
+        virtual bool open(const char *fname) = 0;
+        // Returns copy of next line and advances reader
+        std::string getline();
+        // Is a next line available?
+        inline bool at_eof() const { return nextline.empty(); };
+        // Reposition reader, curerntly only SEEK_SET allowed
+        void seek(unsigned long long, unsigned char);
+        // Reposition reader to start of file
+        virtual void rewind() = 0;
+        // Current position of reader
+        unsigned long long tell() { return history + (page_ptr - page) - nextline.size(); };
+
     protected:
         char page[PAGESIZE];  // where data is stored
         char *page_ptr;  // current head onto data
@@ -29,27 +48,6 @@ namespace OmniReader {
         std::string nextline;  // next line ready to go
         void prepare_next();  // get the next line ready, sets EOF
         unsigned long long refill_page();
-
-    public:
-        Reader() : page(), page_ptr(page), page_occupancy(page), page_end(page + PAGESIZE), history(0), eof(true) {
-          memset(page, '\0', PAGESIZE);
-          nextline.reserve(255);
-        }
-
-        virtual ~Reader() = default;
-
-        virtual bool open(const char *fname) = 0;
-
-        std::string getline();
-
-        bool at_eof() const { return nextline.empty(); };
-
-        void seek(unsigned long long, unsigned char);
-
-        virtual void rewind() = 0;
-
-        unsigned long long tell() { return history + (page_ptr - page); };
-    private:
         virtual inline unsigned long long fill_page() = 0;
     };
 
