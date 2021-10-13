@@ -14,7 +14,7 @@ else:
 
 groreader = Extension(
     name='omnireader.groreader',
-    sources=['pysrc/groreader.pyx'],
+    sources=['omnireader/groreader.pyx'],
     include_dirs=[INCPATH],
     library_dirs=[LIBPATH],
     libraries=['omnireader'],
@@ -25,5 +25,5 @@ groreader = Extension(
 setup(
     name='omnireader',
     ext_modules=cythonize([groreader]),
-    packages=find_packages(where='pysrc'),
+    packages=find_packages(),
 )
