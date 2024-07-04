@@ -36,7 +36,10 @@ docs/doxygen_build
 docs/_build
 _skbuild/
 dist/
-distopia.egg-info/
+omnireader.egg-info/
 .idea/
 .vscode/
 .DS_store
+
+# any cython generated files
+omnireader/*cpp
