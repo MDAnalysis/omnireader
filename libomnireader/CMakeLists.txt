@@ -18,7 +18,7 @@ set_target_properties(omnireader
         PROPERTIES PUBLIC_HEADER "include/omnireader.h")
 
 install(TARGETS omnireader
-        DESTINATION lib
+        DESTINATION omnireader
         PUBLIC_HEADER DESTINATION include
         )
 

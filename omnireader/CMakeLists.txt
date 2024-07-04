@@ -10,4 +10,4 @@ else()
     set_target_properties(groreader PROPERTIES INSTALL_RPATH "\$ORIGIN")
 endif()
 
-# install(TARGETS groreader LIBRARY DESTINATION omnireader)
+install(TARGETS groreader LIBRARY DESTINATION omnireader)
