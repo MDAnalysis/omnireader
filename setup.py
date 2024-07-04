@@ -1,29 +1,13 @@
 import os
-from setuptools import setup, Extension, find_packages
-from Cython.Build import cythonize
-
-
-try:
-    # TODO: something smart about lib detection
-    BASEPATH = os.environ['CONDA_PREFIX']
-except:
-    raise ValueError("Install libomnireader into conda first")
-else:
-    LIBPATH = os.path.join(BASEPATH, 'lib')
-    INCPATH = os.path.join(BASEPATH, 'include')
-
-groreader = Extension(
-    name='omnireader.groreader',
-    sources=['omnireader/groreader.pyx'],
-    include_dirs=[INCPATH],
-    library_dirs=[LIBPATH],
-    libraries=['omnireader'],
-    language='c++',
-)
+from skbuild import setup
 
 
 setup(
     name='omnireader',
-    ext_modules=cythonize([groreader]),
-    packages=find_packages(),
+    packages=['omnireader'],
+    cmake_args=['-DBUILD_PYTHON=ON'],
+    python_requires=">=3.9",
+    install_requires=[
+        "numpy>=1.20.0",
+    ]
 )
