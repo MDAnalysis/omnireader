@@ -1,7 +1,7 @@
 
 from libcpp cimport bool
 from libcpp.string cimport string as stdstring
-from libc.stdlib cimport atoi, atof
+from libc.stdlib cimport atoi
 
 import cython
 import numpy as np
@@ -22,6 +22,13 @@ cdef extern from "omnireader.h" namespace "OmniReader":
         unsigned long long tell()
 
     Reader* GetReader(int f)
+
+
+cdef extern from "fast_float.h" namespace "fast_float":
+    cppclass from_chars_result[UC]:
+        pass
+
+    from_chars_result from_chars[T, UC](const UC *start, const UC* end, T& result)
 
 
 def read_lines(fname):
@@ -104,18 +111,21 @@ def read_coords(fname):
     cdef float tmpcoord
 
     cdef const char* cstrline
+    cdef const char* end
+
     for i in range(natoms):
         cline = r.getline()
         cstrline = cline.c_str()
-        find_starts(cstrline, cstrline + cline.length(), starts)
+        end = cstrline + cline.length()
+        find_starts(cstrline, end, starts)
 
         # starts[0] is element symbol
         # starts[1,2,3] are coordinates
-        tmpcoord = atof(cstrline + starts[1])
+        from_chars[float, char](cstrline + starts[1], end, tmpcoord)
         xyzarr_view[i*3 + 0] = tmpcoord
-        tmpcoord = atof(cstrline + starts[2])
+        from_chars[float, char](cstrline + starts[2], end, tmpcoord)
         xyzarr_view[i*3 + 1] = tmpcoord
-        tmpcoord = atof(cstrline + starts[3])
+        from_chars[float, char](cstrline + starts[3], end, tmpcoord)
         xyzarr_view[i*3 + 2] = tmpcoord
 
     return xyzarr.reshape((natoms, 3))
@@ -154,18 +164,21 @@ cdef class XYZReader:
         natoms = atoi(cline.c_str())
         self.r.getline()  # comment line in file
         cdef const char* cstrline
+        cdef const char* end
+
         for i in range(natoms):
             cline = self.r.getline()
             cstrline = cline.c_str()
-            find_starts(cstrline, cstrline + cline.length(), starts)
+            end = cstrline + cline.length()
+            find_starts(cstrline, end, starts)
 
             # starts[0] is element symbol
             # starts[1,2,3] are coordinates
-            tmpcoord = atof(cstrline + starts[1])
+            from_chars[float, char](cstrline + starts[1], end, tmpcoord)
             xyzarr_view[i*3 + 0] = tmpcoord
-            tmpcoord = atof(cstrline + starts[2])
+            from_chars[float, char](cstrline + starts[2], end, tmpcoord)
             xyzarr_view[i*3 + 1] = tmpcoord
-            tmpcoord = atof(cstrline + starts[3])
+            from_chars[float, char](cstrline + starts[3], end, tmpcoord)
             xyzarr_view[i*3 + 2] = tmpcoord
 
         return xyzarr.reshape((natoms, 3))
