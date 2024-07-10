@@ -1,55 +1,57 @@
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
+#include <iostream>
 
 #include "omnireader.h"
 
 namespace OmniReader {
-    void Reader::prepare_next() {
-      nextline.clear();
-      if (page_ptr == nullptr) {
-        return;
+    bool Reader::advance() {
+      // 1) sets line_ptr to the start of the next line
+      line_ptr = next_ptr;
+      if (line_ptr == nullptr) {
+          // there was no future line
+          return false;
       }
 
-      char *nextl = (char *) memchr(page_ptr, '\n', page_occupancy - page_ptr);
+      // 2) sets next_ptr to the start of the one after that
+      char *nextl = (char *) memchr(line_ptr, '\n', page_occupancy - line_ptr);
       if (nextl == nullptr) {
-        nextline.append(page_ptr, page_occupancy - page_ptr);
+        // if we didn't find the next line, shunt back remaining contents
         refill_page();
-        nextl = (char *) memchr(page_ptr, '\n', page_occupancy - page_ptr);
+
+        nextl = (char *) memchr(line_ptr, '\n', page_occupancy - line_ptr);
       }
       // nextl is either NULL or start of next line
       if (nextl != nullptr) { // only advance on hit
-        nextline.append(page_ptr, nextl + 1 - page_ptr);
-        page_ptr = nextl + 1;
+        next_ptr = nextl + 1;
       } else {
-        page_ptr = nullptr;
+        next_ptr = nullptr;
       }
-    }
 
-    std::string Reader::getline() {
-      if (!at_eof()) {
-        std::string ret(nextline);
-        nextline.clear();
-        prepare_next();
-
-        return ret;
-      } else
-        return std::string();
+      return true;
     }
 
     unsigned long long Reader::refill_page() {
-      history += page_occupancy - page;
+      unsigned long long remainder = page_occupancy - line_ptr;
 
-      unsigned long long amount = fill_page();
+      history += (page_occupancy - page) - remainder;
+      // panic ye not, this is allowed to overlap
+      if (remainder) {
+          unsigned long long next_ptr_offset = next_ptr - line_ptr;
+          memmove(page, line_ptr, remainder);
+          line_ptr = page;
+          next_ptr = line_ptr + next_ptr_offset;
+      }
 
-      eof = (amount == 0);
-      page[amount] = '\0';
-      page_ptr = page;
-      page_occupancy = page + amount;
+      unsigned long long amount = fill_page(remainder);
+      page[amount + remainder] = '\0';
 
       return amount;
     }
 
     void Reader::seek(unsigned long long where, unsigned char whence) {
+      // seeks to *where* and this is used as the current line start
       // always SEEK_SET for now
       if (whence != SEEK_SET)
         abort();
@@ -59,21 +61,23 @@ namespace OmniReader {
 
       if (where < tell() && where >= history) {
         // lies within current page
-        page_ptr = page + (where - history);
+        next_ptr = page + (where - history);
       } else {
         if (where < tell())
           rewind();
         // seek forward to victory!
         while (!at_eof()) {
-          unsigned long long end = tell() + (page_occupancy - page_ptr);
+          unsigned long long end = history + (page_occupancy - page);
           if (where < end) {
-            page_ptr = page + (where - history);
+            line_ptr = page + (where - history);
             break;
           }
+          line_ptr = page_occupancy;
           refill_page();
         }
       }
-      prepare_next();
+
+      advance();
     }
 }
 

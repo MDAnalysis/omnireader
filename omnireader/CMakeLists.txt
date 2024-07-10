@@ -8,6 +8,12 @@ add_library(xyzreader MODULE ${xyzreader})
 python_extension_module(xyzreader)
 target_link_libraries(xyzreader omnireader)
 
+add_cython_target(linesupplier CXX PY3 linesupplier.pyx)
+add_library(linesupplier MODULE ${linesupplier})
+python_extension_module(linesupplier)
+target_link_libraries(linesupplier omnireader)
+
+
 if(APPLE)
     set_target_properties(groreader PROPERTIES INSTALL_RPATH "@loader_path")
 else()
@@ -15,5 +21,5 @@ else()
     set_target_properties(xyzreader PROPERTIES INSTALL_RPATH "\$ORIGIN")
 endif()
 
-install(TARGETS groreader xyzreader
+install(TARGETS groreader xyzreader linesupplier
      LIBRARY DESTINATION omnireader)

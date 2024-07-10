@@ -36,10 +36,9 @@ cdef extern from "omnireader.h" namespace "OmniReader":
     cppclass Reader:
         Reader()
         bool open(const char* fname)
-        stdstring getline()
-        bool at_eof()
-        void seek()
-        unsigned long long tell()
+        const char* line_start()
+        const char* line_end()
+        bool advance()
 
     Reader* GetReader(int f)
 
@@ -116,27 +115,27 @@ cdef class GROReader:
     @cython.wraparound(False)
     @cython.boundscheck(False)
     def read_coords(self):
-        cdef stdstring l
+        cdef const char* lptr
         cdef int i, cs, natoms
         cdef float tmp
         cdef const char* ptr
 
-        l = self.r.getline()  # title line
-        l = self.r.getline()  # num atoms
-
-        natoms = atoi(l.c_str())
+        self.r.advance()
+        lptr = self.r.line_start()
+        natoms = atoi(lptr)
+        self.r.advance()
 
         out = np.empty(natoms * 3, dtype=np.float32, order='C')
         cdef float [::1] coords = out
 
         i = 0
         while not self.r.at_eof():
-            l = self.r.getline()
+            lptr = self.r.line_start()
 
             if (i == 0):  # find spacing between coordinates
-                cs = (strchr(l.c_str() + 25, 46) - (l.c_str() + 25)) + 1  # 46 == .
+                cs = (strchr(lptr + 25, 46) - (lptr + 25)) + 1  # 46 == .
             
-            ptr = l.c_str() + 20
+            ptr = lptr + 20
             
             coords[i * 3 + 0] = atof(ptr)
             coords[i * 3 + 1] = atof(ptr + cs)
@@ -145,6 +144,7 @@ cdef class GROReader:
             i += 1
             if i == natoms:
                 break
+            self.r.advance()
 
         return out.reshape(-1, 3)
 
@@ -159,10 +159,10 @@ cdef class GROReader:
         cdef object[::1] names_view
         cdef unsigned int[::1] indices_view
         
-        l = self.r.getline()  # title line
-        l = self.r.getline()  # num atoms
-
-        natoms = atoi(l.c_str())
+        self.r.advance()
+        ptr = self.r.line_start()
+        self.r.advance()
+        natoms = atoi(ptr)
 
         resids = np.empty(natoms, dtype=np.uint32)
         resnames = np.empty(natoms, dtype=object)
@@ -173,21 +173,22 @@ cdef class GROReader:
         resnames_view = resnames
         names_view = names
         indices_view = indices
-        
+
+        cdef const char* lptr
         # [:5], [5:10], [10:15], [15:20]
         i = 0
         while not self.r.at_eof():
-            l = self.r.getline()
+            lptr = self.r.line_start()
 
-            ptr = l.c_str()
-            resids_view[i] = strtoint(ptr, ptr + 5)
-            resnames_view[i] = stripwhitespace(ptr + 5, ptr + 10)
-            names_view[i] = stripwhitespace(ptr + 10, ptr + 15)
-            indices_view[i] = strtoint(ptr + 15, ptr + 20)
+            resids_view[i] = strtoint(lptr, lptr + 5)
+            resnames_view[i] = stripwhitespace(lptr + 5, lptr + 10)
+            names_view[i] = stripwhitespace(lptr + 10, lptr + 15)
+            indices_view[i] = strtoint(lptr + 15, lptr + 20)
 
             i += 1
             if (i == natoms):
                 break
+            self.r.advance()
 
         return resids, resnames, names, indices
 

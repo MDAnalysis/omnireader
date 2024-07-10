@@ -1,6 +1,5 @@
 
 from libcpp cimport bool
-from libcpp.string cimport string as stdstring
 from libc.stdlib cimport atoi
 
 import cython
@@ -16,10 +15,10 @@ cdef extern from "omnireader.h" namespace "OmniReader":
     cppclass Reader:
         Reader()
         bool open(const char* fname)
-        stdstring getline()
+        const char* line_start()
+        const char* line_end()
+        bool advance()
         bool at_eof()
-        void seek()
-        unsigned long long tell()
 
     Reader* GetReader(int f)
 
@@ -45,11 +44,12 @@ def read_lines(fname):
     if not r.open(fname.encode()):
         raise ValueError
 
-    cdef stdstring cline
+    cdef const char* cline
     lines = []
     while not r.at_eof():
-        cline = r.getline()
+        cline = r.line_start()
         lines.append(cline)
+        r.advance()
 
     del r
 
@@ -100,33 +100,35 @@ def read_coords(fname):
     cdef int natoms, i
     cdef float x, y, z
     cdef int starts[16]
+    cdef const char* cline
+    cdef const char* end
 
-    cline = r.getline()
-    natoms = atoi(cline.c_str())
-    r.getline()  # comment line in file
+    cline = r.line_start()
+    natoms = atoi(cline)
+    r.advance()
+    r.advance()  # comment line
 
     cdef object xyzarr
     xyzarr = np.empty(natoms * 3, dtype=np.float32)
     cdef float[::1] xyzarr_view = xyzarr
     cdef float tmpcoord
 
-    cdef const char* cstrline
-    cdef const char* end
 
     for i in range(natoms):
-        cline = r.getline()
-        cstrline = cline.c_str()
-        end = cstrline + cline.length()
-        find_starts(cstrline, end, starts)
+        cline = r.line_start()
+        end = r.line_end()
+        find_starts(cline, end, starts)
 
         # starts[0] is element symbol
         # starts[1,2,3] are coordinates
-        from_chars[float, char](cstrline + starts[1], end, tmpcoord)
+        from_chars[float, char](cline + starts[1], end, tmpcoord)
         xyzarr_view[i*3 + 0] = tmpcoord
-        from_chars[float, char](cstrline + starts[2], end, tmpcoord)
+        from_chars[float, char](cline + starts[2], end, tmpcoord)
         xyzarr_view[i*3 + 1] = tmpcoord
-        from_chars[float, char](cstrline + starts[3], end, tmpcoord)
+        from_chars[float, char](cline + starts[3], end, tmpcoord)
         xyzarr_view[i*3 + 2] = tmpcoord
+
+        r.advance()
 
     return xyzarr.reshape((natoms, 3))
 
@@ -159,27 +161,29 @@ cdef class XYZReader:
         cdef float tmpcoord
         cdef int i
         cdef int starts[16]
-
-        cline = self.r.getline()
-        natoms = atoi(cline.c_str())
-        self.r.getline()  # comment line in file
-        cdef const char* cstrline
+        cdef const char* cline
         cdef const char* end
 
+        cline = self.r.line_start()
+        natoms = atoi(cline)
+        self.r.advance()
+        self.r.advance()  # comment line in file
+
         for i in range(natoms):
-            cline = self.r.getline()
-            cstrline = cline.c_str()
-            end = cstrline + cline.length()
-            find_starts(cstrline, end, starts)
+            cline = self.r.line_start()
+            end = self.r.line_end()
+            find_starts(cline, end, starts)
 
             # starts[0] is element symbol
             # starts[1,2,3] are coordinates
-            from_chars[float, char](cstrline + starts[1], end, tmpcoord)
-            xyzarr_view[i*3 + 0] = tmpcoord
-            from_chars[float, char](cstrline + starts[2], end, tmpcoord)
-            xyzarr_view[i*3 + 1] = tmpcoord
-            from_chars[float, char](cstrline + starts[3], end, tmpcoord)
-            xyzarr_view[i*3 + 2] = tmpcoord
+            from_chars[float, char](cline + starts[1], end, tmpcoord)
+            xyzarr_view[i * 3 + 0] = tmpcoord
+            from_chars[float, char](cline + starts[2], end, tmpcoord)
+            xyzarr_view[i * 3 + 1] = tmpcoord
+            from_chars[float, char](cline + starts[3], end, tmpcoord)
+            xyzarr_view[i * 3 + 2] = tmpcoord
+
+            self.r.advance()
 
         return xyzarr.reshape((natoms, 3))
 

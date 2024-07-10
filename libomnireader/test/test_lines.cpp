@@ -13,10 +13,13 @@ std::vector<int> PrintLines(Reader* r) {
   std::vector<int> lengths;
 
   while (!r->at_eof()) {
-    std::string l = r->getline();
-    lengths.push_back(l.size());
-    fprintf(stderr, "%lu\t", l.size());
-    fprintf(stderr, ">%s<\n", l.c_str());
+    lengths.push_back(r->line_end() - r->line_start());
+    std::string line(r->line_start(), r->line_end());
+
+    fprintf(stderr, "%lu\t", line.size());
+    fprintf(stderr, ">%s<\n", line.c_str());
+
+    r->advance();
   }
 
   return lengths;

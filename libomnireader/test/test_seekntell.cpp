@@ -20,15 +20,18 @@ int main(int argc, const char* argv[]) {
   r->open(fname);
 
   std::cout << r->tell() << "\t";
-  std::cout << r->getline();
+  std::cout << std::string(r->line_start(), r->line_end());
+  r->advance();
   std::cout << r->tell() << "\t";
-  std::cout << r->getline();
+  std::cout << std::string(r->line_start(), r->line_end());
+  r->advance();
   std::cout << r->tell() << "\n";
 
   r->seek(5, SEEK_SET);
   std::cout << r->tell() << "\t";
-  std::cout << r->getline();
+  std::cout << std::string(r->line_start(), r->line_end());
 
   r->seek(12, SEEK_SET);
-  std::cout << r->tell() << "\t" << r->getline();
+  std::cout << std::string(r->line_start(), r->line_end());
+
 }

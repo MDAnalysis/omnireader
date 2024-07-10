@@ -41,16 +41,19 @@ public:
         return false;
       }
 
-      eof = false;
-      prepare_next();
+      fill_page(0);
+      next_ptr = page;
+      advance();
 
       return !at_eof();
     }
 
-    inline unsigned long long fill_page() final {
+    inline unsigned long long fill_page(unsigned long long remainder) final {
       int error;
-      unsigned int amount = BZ2_bzRead(&error, bzfp, page, (int)(page_end - page));
+      unsigned int amount = BZ2_bzRead(&error, bzfp, page + remainder, (int)(PAGESIZE- remainder));
       // TODO: Deal with error codes
+
+      page_occupancy = page + remainder + amount;
 
       return amount;
     }
@@ -62,10 +65,9 @@ public:
       bzfp = BZ2_bzReadOpen(&error, fp, 0, 0, nullptr, 0);
 
       history = 0;
-      page_ptr = page;
-      page_occupancy = page;
-
-      refill_page();
+      fill_page(0);
+      next_ptr = page;
+      advance();
     }
 };
 

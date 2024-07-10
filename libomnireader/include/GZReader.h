@@ -26,14 +26,17 @@ public:
         return false;
       gzfp = tmp;
 
-      eof = false;
-      prepare_next();
+      fill_page(0);
+      next_ptr = page;
+      advance();
 
       return !at_eof();
     }
 
-    unsigned long long fill_page() final {
-      unsigned long long amount = gzread(gzfp, page, (page_end - page));
+    unsigned long long fill_page(unsigned long long remainder) final {
+      unsigned long long amount = gzread(gzfp, page + remainder, PAGESIZE - remainder);
+
+      page_occupancy = page + remainder + amount;
 
       return amount;
     }
@@ -42,10 +45,10 @@ public:
       gzrewind(gzfp);
 
       history = 0;
-      page_ptr = page;
-      page_occupancy = page;
 
-      refill_page();
+      fill_page(0);
+      next_ptr = page;
+      advance();
     }
 };
 

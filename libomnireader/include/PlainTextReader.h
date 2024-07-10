@@ -31,15 +31,17 @@ public:
       }
 
       fp = tmp;
-      eof = false;
-      refill_page();
-      prepare_next();
+      fill_page(0);
+      next_ptr = page;
+      advance();
 
       return !at_eof();
     }
 
-    inline unsigned long long fill_page() final {
-      unsigned long long amount = fread(page, 1, (page_end - page), fp);
+    inline unsigned long long fill_page(unsigned long long remainder) final {
+      unsigned long long amount = fread(page + remainder, 1, PAGESIZE - remainder, fp);
+
+      page_occupancy = page + remainder + amount;
 
       return amount;
     }
@@ -48,10 +50,9 @@ public:
       ::rewind(fp);
 
       history = 0;
-      page_ptr = page;
-      page_occupancy = page;
-      eof = false;
-      refill_page();
+      fill_page(0);
+      next_ptr = page;
+      advance();
     }
 };
 
