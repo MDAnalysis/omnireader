@@ -140,6 +140,31 @@ cdef class XYZReader:
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
+    def read_atom_names(self) -> list:
+        cdef const char* cline
+        cdef const char* end
+        cdef int i, natoms
+        cdef int spans[16]
+        cdef object name
+
+        cline = self.r.line_start()
+        natoms = atoi(cline)
+        self.r.advance()
+        self.r.advance()
+
+        names = []
+        for i in range(natoms):
+            cline = self.r.line_start()
+            end = self.r.line_end()
+            find_spans(cline, end, spans)
+
+            name = PyUnicode_FromStringAndSize(cline + spans[0], spans[1] - spans[0])
+            names.append(name)
+
+        return names
+
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     def read_coords_into(self, xyzarr):
         cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
         cdef float tmpcoord
