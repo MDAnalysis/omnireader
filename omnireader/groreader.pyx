@@ -39,6 +39,7 @@ cdef extern from "omnireader.h" namespace "OmniReader":
         const char* line_start()
         const char* line_end()
         bool advance()
+        bool at_eof()
 
     Reader* GetReader(int f)
 
