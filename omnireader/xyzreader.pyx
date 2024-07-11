@@ -5,31 +5,11 @@ from libc.stdlib cimport atoi
 import cython
 import numpy as np
 
-
-cdef extern from "Python.h":
-    object PyUnicode_FromStringAndSize(const char* v, size_t len)
-
-cdef extern from "omnireader.h" namespace "OmniReader":
-    ctypedef enum Format:
-        PlainText
-        BZ2
-        GZ
-
-    cppclass Reader:
-        Reader()
-        bool open(const char* fname)
-        const char* line_start()
-        const char* line_end()
-        bool advance()
-
-    Reader* GetReader(int f)
-
-
-cdef extern from "fast_float.h" namespace "fast_float":
-    cppclass from_chars_result[UC]:
-        pass
-
-    from_chars_result from_chars[T, UC](const UC *start, const UC* end, T& result)
+from omnireader.libomnireader cimport (
+    PyUnicode_FromStringAndSize,
+    Format, Reader, GetReader,
+    from_chars,
+)
 
 
 cdef void find_spans(const char *start, const char *end,
@@ -95,7 +75,7 @@ def read_coords(fname):
     cdef object xyzarr
     xyzarr = np.empty(natoms * 3, dtype=np.float32)
     cdef float[::1] xyzarr_view = xyzarr
-    cdef float tmpcoord
+    cdef float tmpcoord = 0.0
 
 
     for i in range(natoms):
@@ -167,7 +147,7 @@ cdef class XYZReader:
     @cython.wraparound(False)
     def read_coords_into(self, xyzarr):
         cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
-        cdef float tmpcoord
+        cdef float tmpcoord = 0.0
         cdef int i, natoms
         cdef int spans[16]
         cdef const char* cline

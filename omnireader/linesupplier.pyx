@@ -1,27 +1,13 @@
 
 from libcpp cimport bool
-from libc.stdlib cimport atoi
 from libcpp.string cimport string as stdstring
 
 import cython
 import numpy as np
 
-
-cdef extern from "omnireader.h" namespace "OmniReader":
-    ctypedef enum Format:
-        PlainText
-        BZ2
-        GZ
-
-    cppclass Reader:
-        Reader()
-        bool open(const char* fname)
-        const char* line_start()
-        const char* line_end()
-        stdstring get_line()
-        bool advance()
-
-    Reader* GetReader(int f)
+from omnireader.libomnireader cimport (
+    Format, Reader, GetReader,
+)
 
 
 cdef class LineSupplier:
