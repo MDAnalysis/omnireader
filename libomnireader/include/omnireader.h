@@ -19,7 +19,7 @@ namespace OmniReader {
 #define PAGESIZE 4194304
     class Reader {
     public:
-        Reader() : page(), line_ptr(nullptr), next_ptr(page), page_occupancy(nullptr), history(0) {
+        Reader() : page(), line_ptr(nullptr), next_ptr(page), page_occupancy(nullptr), history(0), eof(true) {
           memset(page, 0xFF, PAGESIZE);
         }
         virtual ~Reader() = default;
@@ -48,7 +48,7 @@ namespace OmniReader {
          */
         bool advance();
         // Is a line available?
-        inline bool at_eof() const { return line_ptr == nullptr; };
+        inline bool at_eof() const { return eof; };
         // Reposition reader, currently only SEEK_SET allowed, returns success
         bool seek(unsigned long long, unsigned char);
         // Reposition reader to start of file, return if line available
@@ -58,9 +58,10 @@ namespace OmniReader {
 
     protected:
         char page[PAGESIZE];  // where data is stored
-        char *line_ptr;  // points to current line, within page
-        char *next_ptr;  // points to start of next line, within page
-        char *page_occupancy;  // size of data stored, i.e. to where in *page* do we have data
+        const char *line_ptr;  // points to current line, within page
+        const char *next_ptr;  // points to start of next line, within page
+        const char *page_occupancy;  // size of data stored, i.e. to where in *page* do we have data
+        bool eof;  // internal token to track if we hit the end
         unsigned long long history; // total bytes not in page that we've progressed past
         void prepare_next();  // get the next line ready, sets EOF
         unsigned long long refill_page();

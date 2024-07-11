@@ -8,14 +8,16 @@
 namespace OmniReader {
     bool Reader::advance() {
       // 1) sets line_ptr to the start of the next line
-      line_ptr = next_ptr;
-      if (line_ptr == nullptr) {
-          // there was no future line
+      if (next_ptr == nullptr) {
+          // if we've hit the end of the road, move the line ptr to final byte
+          line_ptr = page_occupancy;
+          eof = true;
           return false;
       }
+      line_ptr = next_ptr;
 
       // 2) sets next_ptr to the start of the one after that
-      char *nextl = (char *) memchr(line_ptr, '\n', page_occupancy - line_ptr);
+      auto *nextl = (char *) memchr(line_ptr, '\n', page_occupancy - line_ptr);
       if (nextl == nullptr) {
         // if we didn't find the next line, shunt back remaining contents
         refill_page();
@@ -28,6 +30,7 @@ namespace OmniReader {
       } else {
         next_ptr = nullptr;
       }
+      eof = false;
 
       return true;
     }
@@ -41,15 +44,13 @@ namespace OmniReader {
       unsigned long long remainder = page_occupancy - line_ptr;
       history += line_ptr - page;
       if (remainder) {
-          unsigned long long next_ptr_offset = next_ptr - line_ptr;
           // panic ye not, this is allowed to overlap
           memmove(page, line_ptr, remainder);
-          line_ptr = page;
-          next_ptr = line_ptr + next_ptr_offset;
       }
 
       unsigned long long amount = fill_page(remainder);
       page[amount + remainder] = '\0';
+      line_ptr = page;
 
       return amount;
     }
