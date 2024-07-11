@@ -166,7 +166,7 @@ cdef class XYZReader:
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
-    def read_coords_into(self, xyzarr):
+    def read_coords_into(self, xyzarr, header=True, n_atoms=0):
         cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
         cdef float tmpcoord = 0.0
         cdef int i, natoms
@@ -174,10 +174,13 @@ cdef class XYZReader:
         cdef const char* cline
         cdef const char* end
 
-        cline = self.r.line_start()
-        natoms = atoi(cline)
-        self.r.advance()
-        self.r.advance()  # comment line in file
+        if header:
+            cline = self.r.line_start()
+            natoms = atoi(cline)
+            self.r.advance()
+            self.r.advance()  # comment line in file
+        else:
+            natoms = n_atoms
 
         for i in range(natoms):
             cline = self.r.line_start()
@@ -195,11 +198,16 @@ cdef class XYZReader:
 
             self.r.advance()
 
-        return xyzarr.reshape((natoms, 3))
+        return xyzarr.reshape((-1, 3))
 
-    def read_coords(self, natoms):
+    def read_coords(self):
         cdef object xyzarr
+        cline = self.r.line_start()
+        natoms = atoi(cline)
+        self.r.advance()
+        self.r.advance()  # comment line in file
+
         xyzarr = np.empty(natoms * 3, dtype=np.float32)
 
-        return self.read_coords_into(xyzarr)
+        return self.read_coords_into(xyzarr, header=False, n_atoms=natoms)
 
