@@ -1,5 +1,5 @@
 
-from libcpp cimport bool
+from libcpp cimport bool as cbool
 from libc.stdlib cimport atoi
 
 import cython
@@ -9,13 +9,14 @@ from omnireader.libomnireader cimport (
     PyUnicode_FromStringAndSize,
     Format, Reader, GetReader,
     from_chars,
+    SEEK_SET,
 )
 
 
 cdef void find_spans(const char *start, const char *end,
                      int *where):
     cdef const char* ptr
-    cdef bool saw_token = False
+    cdef cbool saw_token = False
 
     ptr = start
     cdef int num=0
@@ -117,6 +118,26 @@ cdef class XYZReader:
     def __dealloc__(self):
         if self.r != NULL:
             del self.r
+
+    def seek(self, unsigned long long pos):
+        cdef cbool ok
+
+        ok = self.r.seek(pos, SEEK_SET)
+
+        if ok:
+            return True
+        else:
+            return False
+
+    def tell(self):
+        return self.r.tell()
+
+    def at_eof(self):
+        cdef cbool ok
+
+        ok = self.r.at_eof()
+
+        return bool(ok)
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
