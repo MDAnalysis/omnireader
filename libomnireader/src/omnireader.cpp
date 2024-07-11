@@ -63,13 +63,9 @@ namespace OmniReader {
 
       // 1) set next_ptr to the desired address
       // 2) call advance to then set line_ptr to this and prep the next line
-      if (where == tell()) {
-          // todo: this branch is a bit stupid? could do return at_eof()
-        next_ptr = line_ptr;
-      }
-      else if (where < tell()) {
+      if (where < tell()) {
           unsigned long long buffer_start = history;
-          if (buffer_start >= where) {
+          if (buffer_start <= where) {
               // desired address is within buffer behind line_ptr
               next_ptr = page + (where - history);
           } else {
@@ -78,15 +74,19 @@ namespace OmniReader {
           }
       }
       // don't make this an else-if, we might be entering from a rewind
-      if (where < tell()) {
+      if (where == tell()) {
+        next_ptr = line_ptr;
+      }
+      if (where > tell()) {
           unsigned long long buffer_end = history + (page_occupancy - page);
           while (buffer_end < where) {
               // load next page
               line_ptr = page_occupancy;
               unsigned long long newbytes = refill_page();
               if (!newbytes) {
-                  // end of file state, both line and next are nullptr
-                  line_ptr = nullptr;
+                  // end of file state
+                  line_ptr = page_occupancy;
+                  eof = true;
                   next_ptr = nullptr;
                   return false;
               }
