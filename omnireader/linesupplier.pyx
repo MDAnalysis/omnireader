@@ -7,6 +7,7 @@ import numpy as np
 
 from omnireader.libomnireader cimport (
     Format, Reader, GetReader,
+    SEEK_SET,
 )
 
 
@@ -26,6 +27,12 @@ cdef class LineSupplier:
 
         if not self.r.open(bytes(fname, 'utf-8')):
             raise ValueError
+
+    def seek(self, pos):
+        self.r.seek(pos, SEEK_SET)
+
+    def tell(self):
+        return self.r.tell()
 
     def __dealloc__(self):
         if self.r != NULL:
