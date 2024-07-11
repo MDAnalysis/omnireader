@@ -32,13 +32,17 @@ namespace OmniReader {
       return true;
     }
 
+    /**
+     * Refills the page buffer maintaining everything from line_ptr forwards
+     *
+     * @return the number of new bytes read
+     */
     unsigned long long Reader::refill_page() {
       unsigned long long remainder = page_occupancy - line_ptr;
-
-      history += (page_occupancy - page) - remainder;
-      // panic ye not, this is allowed to overlap
+      history += line_ptr - page;
       if (remainder) {
           unsigned long long next_ptr_offset = next_ptr - line_ptr;
+          // panic ye not, this is allowed to overlap
           memmove(page, line_ptr, remainder);
           line_ptr = page;
           next_ptr = line_ptr + next_ptr_offset;
@@ -50,34 +54,48 @@ namespace OmniReader {
       return amount;
     }
 
-    void Reader::seek(unsigned long long where, unsigned char whence) {
+    bool Reader::seek(unsigned long long where, unsigned char whence) {
       // seeks to *where* and this is used as the current line start
       // always SEEK_SET for now
       if (whence != SEEK_SET)
         abort();
 
-      if (where == tell())
-        return;
-
-      if (where < tell() && where >= history) {
-        // lies within current page
-        next_ptr = page + (where - history);
-      } else {
-        if (where < tell())
-          rewind();
-        // seek forward to victory!
-        while (!at_eof()) {
-          unsigned long long end = history + (page_occupancy - page);
-          if (where < end) {
-            line_ptr = page + (where - history);
-            break;
+      // 1) set next_ptr to the desired address
+      // 2) call advance to then set line_ptr to this and prep the next line
+      if (where == tell()) {
+          // todo: this branch is a bit stupid? could do return at_eof()
+        next_ptr = line_ptr;
+      }
+      else if (where < tell()) {
+          unsigned long long buffer_start = history;
+          if (buffer_start >= where) {
+              // desired address is within buffer behind line_ptr
+              next_ptr = page + (where - history);
+          } else {
+              // desired address is behind us, need to rewind for now...
+              rewind();
           }
-          line_ptr = page_occupancy;
-          refill_page();
-        }
+      }
+      // don't make this an else-if, we might be entering from a rewind
+      if (where < tell()) {
+          unsigned long long buffer_end = history + (page_occupancy - page);
+          while (buffer_end < where) {
+              // load next page
+              line_ptr = page_occupancy;
+              unsigned long long newbytes = refill_page();
+              if (!newbytes) {
+                  // end of file state, both line and next are nullptr
+                  line_ptr = nullptr;
+                  next_ptr = nullptr;
+                  return false;
+              }
+
+              buffer_end = history + (page_occupancy - page);
+          }
+          next_ptr = page + (where - history);
       }
 
-      advance();
+      return advance();
     }
 }
 

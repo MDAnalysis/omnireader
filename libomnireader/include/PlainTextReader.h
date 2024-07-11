@@ -46,13 +46,13 @@ public:
       return amount;
     }
 
-    void rewind() final {
+    bool rewind() final {
       ::rewind(fp);
 
       history = 0;
       fill_page(0);
       next_ptr = page;
-      advance();
+      return advance();
     }
 };
 

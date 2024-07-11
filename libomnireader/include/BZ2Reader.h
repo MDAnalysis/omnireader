@@ -58,7 +58,7 @@ public:
       return amount;
     }
 
-    void rewind() final {
+    bool rewind() final {
       int error;
       BZ2_bzReadClose(&error, bzfp);
       ::rewind(fp);
@@ -67,7 +67,7 @@ public:
       history = 0;
       fill_page(0);
       next_ptr = page;
-      advance();
+      return advance();
     }
 };
 

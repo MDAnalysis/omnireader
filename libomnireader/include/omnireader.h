@@ -25,17 +25,34 @@ namespace OmniReader {
         virtual ~Reader() = default;
         // Returns success on opening a file
         virtual bool open(const char *fname) = 0;
-        // Returns copy of next line and advances reader
+        /**
+         * @return A pointer to the start of the current line in file.  nullptr if at end of file
+         *
+         * This buffer will always have at least 256 bytes following, so go nuts with your SIMD.
+         */
         const char* line_start() const { return line_ptr; };
+        /**
+         * @return A pointer to the end of the current line
+         *
+         * If line_start is nullptr this is invalid
+         */
         const char* line_end() const { return next_ptr == nullptr ? page_occupancy : next_ptr - 1; };
+        /**
+         * @return A copy of the current line
+         */
         std::string get_line() const { return std::string(line_start(), line_end()); }
+        /**
+         * Advance the reader making a new line available
+         *
+         * @return if next line is available
+         */
         bool advance();
         // Is a line available?
         inline bool at_eof() const { return line_ptr == nullptr; };
-        // Reposition reader, curerntly only SEEK_SET allowed
-        void seek(unsigned long long, unsigned char);
-        // Reposition reader to start of file
-        virtual void rewind() = 0;
+        // Reposition reader, currently only SEEK_SET allowed, returns success
+        bool seek(unsigned long long, unsigned char);
+        // Reposition reader to start of file, return if line available
+        virtual bool rewind() = 0;
         // Current position of reader
         unsigned long long tell() const { return history + (line_ptr - page) ; };
 
@@ -43,7 +60,7 @@ namespace OmniReader {
         char page[PAGESIZE];  // where data is stored
         char *line_ptr;  // points to current line, within page
         char *next_ptr;  // points to start of next line, within page
-        char *page_occupancy;  // size of data stored
+        char *page_occupancy;  // size of data stored, i.e. to where in *page* do we have data
         unsigned long long history; // total bytes not in page that we've progressed past
         void prepare_next();  // get the next line ready, sets EOF
         unsigned long long refill_page();

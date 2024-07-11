@@ -20,6 +20,9 @@ cdef extern from "omnireader.h" namespace "OmniReader":
         stdstring get_line()
         bool advance()
         bool at_eof()
+        bool seek(unsigned long long where, unsigned char whence)
+        unsigned long long tell()
+        bool rewind()
 
     Reader* GetReader(int f)
 
