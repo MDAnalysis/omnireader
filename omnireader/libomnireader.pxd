@@ -61,6 +61,7 @@ cdef inline unsigned int strtoint(const char* beg, const char* end):
     return ret
 
 
+# todo: this is behaving different through cython than above function
 cdef inline int find_spans(const char *start, const char *end,
                     vector[int] &where):
     cdef const char* ptr
@@ -70,6 +71,7 @@ cdef inline int find_spans(const char *start, const char *end,
     ptr = start
 
     while ptr < end:
+        # todo: better definition of whitespace, e.g. \t
         is_whitespace = ptr[0] == b' '
         if saw_token == is_whitespace:
             saw_token = not saw_token
