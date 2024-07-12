@@ -1,5 +1,6 @@
 
 from libcpp cimport bool as cbool
+from libcpp.vector cimport vector
 from libc.stdlib cimport atoi
 
 import cython
@@ -13,45 +14,31 @@ from omnireader.libomnireader cimport (
 )
 
 
-cdef void find_spans(const char *start, const char *end,
-                     int *where):
+cdef int find_spans(const char *start, const char *end,
+                    vector[int] &where):
     cdef const char* ptr
     cdef cbool saw_token = False
+    cdef cbool is_whitespace
 
     ptr = start
-    cdef int num=0
-    cdef int max_breaks = 16
-    for i in range(16):
-        where[i] = -1
-
-    while ptr[0] == b' ':
-        ptr += 1
-    where[0] = ptr - start
-    num += 1
-    saw_token = True
 
     while ptr < end:
-        if saw_token:
-            if ptr[0] == b' ':
-                saw_token = False
-                where[num] = ptr - start
-                num += 1
-        else:
-            if ptr[0] != b' ':
-                saw_token = True
-                where[num] = ptr - start
-                num += 1
-                if num == max_breaks:
-                    where[15] = -2
-                    return
+        is_whitespace = ptr[0] == b' '
+        if saw_token == is_whitespace:
+            saw_token = not saw_token
+            where.push_back(ptr - start)
         ptr += 1
+    if saw_token:  # if nonwhitespace reached end of buffer, tag final char as end of last span
+        where.push_back(ptr - start)
+
+    return where.size()
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def read_coords(fname):
     cdef Reader* r
-
+    cdef nspans
     if fname.endswith('bz2'):
         r = GetReader(Format.BZ2)
     elif fname.endswith('gz'):
@@ -64,7 +51,7 @@ def read_coords(fname):
 
     cdef int natoms, i
     cdef float x, y, z
-    cdef int spans[16]
+    cdef vector[int] spans
     cdef const char* cline
     cdef const char* end
 
@@ -82,7 +69,8 @@ def read_coords(fname):
     for i in range(natoms):
         cline = r.line_start()
         end = r.line_end()
-        find_spans(cline, end, spans)
+        spans.clear()
+        nspans = find_spans(cline, end, spans)
 
         # starts[0] is element symbol
         # starts[1,2,3] are coordinates
@@ -145,7 +133,7 @@ cdef class XYZReader:
         cdef const char* cline
         cdef const char* end
         cdef int i, natoms
-        cdef int spans[16]
+        cdef vector[int] spans
         cdef object name
 
         cline = self.r.line_start()
@@ -170,7 +158,7 @@ cdef class XYZReader:
         cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
         cdef float tmpcoord = 0.0
         cdef int i, natoms
-        cdef int spans[16]
+        cdef vector[int] spans
         cdef const char* cline
         cdef const char* end
 
@@ -185,6 +173,7 @@ cdef class XYZReader:
         for i in range(natoms):
             cline = self.r.line_start()
             end = self.r.line_end()
+            spans.clear()
             find_spans(cline, end, spans)
 
             # starts[0] is element symbol
