@@ -1,5 +1,6 @@
 from libcpp cimport bool
 from libcpp.string cimport string as stdstring
+from libcpp.vector cimport vector
 from libc.stdio cimport SEEK_SET
 
 
@@ -58,3 +59,23 @@ cdef inline unsigned int strtoint(const char* beg, const char* end):
         beg += 1
 
     return ret
+
+
+cdef inline int find_spans(const char *start, const char *end,
+                    vector[int] &where):
+    cdef const char* ptr
+    cdef bool saw_token = False
+    cdef bool is_whitespace
+
+    ptr = start
+
+    while ptr < end:
+        is_whitespace = ptr[0] == b' '
+        if saw_token == is_whitespace:
+            saw_token = not saw_token
+            where.push_back(ptr - start)
+        ptr += 1
+    if saw_token:  # if nonwhitespace reached end of buffer, tag final char as end of last span
+        where.push_back(ptr - start)
+
+    return where.size()

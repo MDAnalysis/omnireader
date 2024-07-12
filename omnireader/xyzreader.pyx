@@ -10,28 +10,9 @@ from omnireader.libomnireader cimport (
     PyUnicode_FromStringAndSize,
     Format, Reader, GetReader,
     from_chars,
+    find_spans,
     SEEK_SET,
 )
-
-
-cdef int find_spans(const char *start, const char *end,
-                    vector[int] &where):
-    cdef const char* ptr
-    cdef cbool saw_token = False
-    cdef cbool is_whitespace
-
-    ptr = start
-
-    while ptr < end:
-        is_whitespace = ptr[0] == b' '
-        if saw_token == is_whitespace:
-            saw_token = not saw_token
-            where.push_back(ptr - start)
-        ptr += 1
-    if saw_token:  # if nonwhitespace reached end of buffer, tag final char as end of last span
-        where.push_back(ptr - start)
-
-    return where.size()
 
 
 @cython.boundscheck(False)
