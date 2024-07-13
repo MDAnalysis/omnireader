@@ -135,49 +135,82 @@ cdef class XYZReader:
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
-    def read_coords_into(self, xyzarr, header=True, n_atoms=0):
-        cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
+    cpdef cbool read_coords_into(self, float[::1] xyzarr, cbool header=True, n_atoms:int=0):
+        """Attempts to read coordinates into array, returns success
+        
+        Parameters
+        ----------
+        xyzarr : np array
+          array to read into, modified in place. should be of size natoms * 3
+        header : bool
+          if the header should be read, default true
+        n_atoms : int
+          the number of atoms.  if the header has been read, natoms should
+          be supplied
+          
+        Returns
+        -------
+        success : bool
+          returns True if frame fully read.  If False, the state of xyzarr is
+          unreliable and may be partially filled
+        """
+        # cdef float[::1] xyzarr_view = xyzarr.reshape(-1)
         cdef float tmpcoord = 0.0
-        cdef int i, natoms
+        cdef int i, natoms, nfields
         cdef vector[int] spans
         cdef const char* cline
         cdef const char* end
 
+        if self.r.at_eof():
+            return False
+
         if header:
             cline = self.r.line_start()
+            if cline == NULL:
+                return False
             natoms = atoi(cline)
-            self.r.advance()
-            self.r.advance()  # comment line in file
+            if not (self.r.advance() and  self.r.advance()):
+                return False
         else:
             natoms = n_atoms
+
+        if xyzarr.shape[0] != natoms * 3:
+            return False
 
         for i in range(natoms):
             cline = self.r.line_start()
             end = self.r.line_end()
             spans.clear()
-            find_spans(cline, end, spans)
+            nfields = find_spans(cline, end, spans)
+
+            if nfields < 4:
+                return False
 
             # starts[0] is element symbol
             # starts[1,2,3] are coordinates
             from_chars[float, char](cline + spans[2], cline + spans[3], tmpcoord)
-            xyzarr_view[i * 3 + 0] = tmpcoord
+            xyzarr[i * 3 + 0] = tmpcoord
             from_chars[float, char](cline + spans[4], cline + spans[5], tmpcoord)
-            xyzarr_view[i * 3 + 1] = tmpcoord
+            xyzarr[i * 3 + 1] = tmpcoord
             from_chars[float, char](cline + spans[6], cline + spans[7], tmpcoord)
-            xyzarr_view[i * 3 + 2] = tmpcoord
+            xyzarr[i * 3 + 2] = tmpcoord
 
-            self.r.advance()
+            if not self.r.advance():
+                return False
 
-        return xyzarr.reshape((-1, 3))
+        return True
 
     def read_coords(self):
         cdef object xyzarr
+        cdef int natoms
         cline = self.r.line_start()
         natoms = atoi(cline)
         self.r.advance()
         self.r.advance()  # comment line in file
 
-        xyzarr = np.empty(natoms * 3, dtype=np.float32)
+        xyzarr = np.empty((natoms * 3), dtype=np.float32)
 
-        return self.read_coords_into(xyzarr, header=False, n_atoms=natoms)
+        ok = self.read_coords_into(xyzarr, header=False, n_atoms=natoms)
 
+        if ok:
+            return xyzarr.reshape((-1, 3))
