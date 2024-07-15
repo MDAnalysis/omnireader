@@ -1,5 +1,6 @@
 from libcpp cimport bool
 from libcpp.string cimport string as stdstring
+from libcpp.memory cimport unique_ptr
 
 
 cdef extern from "Python.h":
@@ -24,7 +25,7 @@ cdef extern from "omnireader.h" namespace "OmniReader":
         unsigned long long tell()
         bool rewind()
 
-    Reader* GetReader(int f)
+    unique_ptr[Reader] GetReader(int f)
 
 
 cdef extern from "fast_float.h" namespace "fast_float":
@@ -34,7 +35,7 @@ cdef extern from "fast_float.h" namespace "fast_float":
     from_chars_result from_chars[T, UC](const UC *start, const UC* end, T& result)
 
 
-cdef unsigned int strtoint(const char* beg, const char* end):
+cdef inline unsigned int strtoint(const char* beg, const char* end):
     # fixed format file, so ints could be touching other ints, so strtoi can't be used
     # e.g. indices column could be touching the positions column
     cdef unsigned int ret = 0

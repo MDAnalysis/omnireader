@@ -16,7 +16,7 @@ int main(int argc, const char* argv[]) {
 
   const char* fname = argv[1];
 
-  OmniReader::Reader* r = OmniReader::GetReader(OmniReader::Format::PlainText);
+  auto r = OmniReader::GetReader(OmniReader::Format::PlainText);
   r->open(fname);
 
   std::cout << r->tell() << "\t";

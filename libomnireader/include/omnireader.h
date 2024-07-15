@@ -7,6 +7,7 @@
 
 #include <string>
 #include <cstring>
+#include <memory>
 
 namespace OmniReader {
 
@@ -67,7 +68,7 @@ namespace OmniReader {
         virtual inline unsigned long long fill_page(unsigned long long remainder) = 0;
     };
 
-    Reader *GetReader(Format option);
+    std::unique_ptr<Reader> GetReader(Format option);
 }
 
 #endif //OMNIREADER_OMNIREADER_H

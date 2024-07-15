@@ -9,7 +9,7 @@
 
 using namespace OmniReader;
 
-std::vector<int> PrintLines(Reader* r) {
+std::vector<int> PrintLines( const std::unique_ptr<Reader> &r) {
   std::vector<int> lengths;
 
   while (!r->at_eof()) {
@@ -48,33 +48,30 @@ int main(int argc, char* argv[]) {
 
   const char* fname = argv[1];
 
-  OmniReader::Reader* r1 = GetReader(Format::PlainText);
+  auto r1 = GetReader(Format::PlainText);
   if (!r1->open(fname)) {
     fprintf(stderr, "Failed to open file: %s\n", argv[1]);
     return 1;
   }
   std::vector<int> ref_lengths = PrintLines(r1);
-  delete r1;
 
   std::string bz2fname(fname);
   bz2fname.append(".bz2");
-  OmniReader::Reader* r2 = GetReader(Format::BZ2);
+  auto r2 = GetReader(Format::BZ2);
   if (!r2->open(bz2fname.c_str())) {
     fprintf(stderr, "Failed to open bz2 file\n");
     return 1;
   }
   std::vector<int> bz2_lengths = PrintLines(r2);
-  delete r2;
 
   std::string gzfname(fname);
   gzfname.append(".gz");
-  OmniReader::Reader* r3 = GetReader(Format::GZ);
+  auto r3 = GetReader(Format::GZ);
   if (!r3->open(gzfname.c_str())) {
     fprintf(stderr, "Failed to open gz file\n");
     return 1;
   }
   std::vector<int> gz_lengths = PrintLines(r3);
-  delete r3;
 
   if (!compare_lengths(ref_lengths, gz_lengths)) {
     fputs("Failed for GZip\n", stderr);

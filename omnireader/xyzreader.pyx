@@ -1,6 +1,8 @@
 
 from libcpp cimport bool
 from libc.stdlib cimport atoi
+from libcpp.memory cimport unique_ptr
+
 
 import cython
 import numpy as np
@@ -49,7 +51,7 @@ cdef void find_spans(const char *start, const char *end,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def read_coords(fname):
-    cdef Reader* r
+    cdef unique_ptr[Reader] r
 
     if fname.endswith('bz2'):
         r = GetReader(Format.BZ2)

@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 
 #include "omnireader.h"
 
@@ -104,14 +105,14 @@ namespace OmniReader {
 #include "GZReader.h"
 
 namespace OmniReader {
-    Reader *GetReader(OmniReader::Format option) {
+    std::unique_ptr<Reader> GetReader(OmniReader::Format option) {
       switch (option) {
         case OmniReader::Format::PlainText:
-          return new PlainTextReader();
+          return  std::make_unique<PlainTextReader>(PlainTextReader());
         case OmniReader::Format::BZ2:
-          return new BZ2Reader();
+          return std::make_unique<BZ2Reader>(BZ2Reader());
         case OmniReader::Format::GZ:
-          return new GZReader();
+          return std::make_unique<GZReader>(GZReader());
         default:
           return nullptr;
       }
