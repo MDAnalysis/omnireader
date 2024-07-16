@@ -1,3 +1,6 @@
+# find fast_float
+find_package(fast_float REQUIRED)
+
 add_cython_target(groreader CXX PY3 groreader.pyx)
 add_library(groreader MODULE ${groreader})
 python_extension_module(groreader)
