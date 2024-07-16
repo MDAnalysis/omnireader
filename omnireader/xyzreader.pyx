@@ -1,6 +1,8 @@
 
 from libcpp cimport bool
 from libc.stdlib cimport atoi
+from libcpp.memory cimport unique_ptr
+
 
 import cython
 import numpy as np
@@ -49,7 +51,7 @@ cdef void find_spans(const char *start, const char *end,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def read_coords(fname):
-    cdef Reader* r
+    cdef unique_ptr[Reader] r
 
     if fname.endswith('bz2'):
         r = GetReader(Format.BZ2)
@@ -58,7 +60,7 @@ def read_coords(fname):
     else:
         r = GetReader(Format.PlainText)
 
-    if not r.open(fname.encode()):
+    if not r.get().open(fname.encode()):
         raise ValueError
 
     cdef int natoms, i
@@ -67,10 +69,10 @@ def read_coords(fname):
     cdef const char* cline
     cdef const char* end
 
-    cline = r.line_start()
+    cline = r.get().line_start()
     natoms = atoi(cline)
-    r.advance()
-    r.advance()  # comment line
+    r.get().advance()
+    r.get().advance()  # comment line
 
     cdef object xyzarr
     xyzarr = np.empty(natoms * 3, dtype=np.float32)
@@ -79,8 +81,8 @@ def read_coords(fname):
 
 
     for i in range(natoms):
-        cline = r.line_start()
-        end = r.line_end()
+        cline = r.get().line_start()
+        end = r.get().line_end()
         find_spans(cline, end, spans)
 
         # starts[0] is element symbol
@@ -92,16 +94,13 @@ def read_coords(fname):
         from_chars[float, char](cline + spans[6], cline + spans[7], tmpcoord)
         xyzarr_view[i*3 + 2] = tmpcoord
 
-        r.advance()
+        r.get().advance()
 
     return xyzarr.reshape((natoms, 3))
 
 
 cdef class XYZReader:
-    cdef Reader *r
-
-    def __cinit__(self):
-        self.r = NULL
+    cdef unique_ptr[Reader] r
 
     def __init__(self, str fname):
         if fname.endswith('bz2'):
@@ -111,12 +110,9 @@ cdef class XYZReader:
         else:
             self.r = GetReader(Format.PlainText)
 
-        if not self.r.open(bytes(fname, 'utf-8')):
+        if not self.r.get().open(bytes(fname, 'utf-8')):
             raise ValueError
 
-    def __dealloc__(self):
-        if self.r != NULL:
-            del self.r
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -127,15 +123,15 @@ cdef class XYZReader:
         cdef int spans[16]
         cdef object name
 
-        cline = self.r.line_start()
+        cline = self.r.get().line_start()
         natoms = atoi(cline)
-        self.r.advance()
-        self.r.advance()
+        self.r.get().advance()
+        self.r.get().advance()
 
         names = []
         for i in range(natoms):
-            cline = self.r.line_start()
-            end = self.r.line_end()
+            cline = self.r.get().line_start()
+            end = self.r.get().line_end()
             find_spans(cline, end, spans)
 
             name = PyUnicode_FromStringAndSize(cline + spans[0], spans[1] - spans[0])
@@ -153,14 +149,14 @@ cdef class XYZReader:
         cdef const char* cline
         cdef const char* end
 
-        cline = self.r.line_start()
+        cline = self.r.get().line_start()
         natoms = atoi(cline)
-        self.r.advance()
-        self.r.advance()  # comment line in file
+        self.r.get().advance()
+        self.r.get().advance()  # comment line in file
 
         for i in range(natoms):
-            cline = self.r.line_start()
-            end = self.r.line_end()
+            cline = self.r.get().line_start()
+            end = self.r.get().line_end()
             find_spans(cline, end, spans)
 
             # starts[0] is element symbol
@@ -172,7 +168,7 @@ cdef class XYZReader:
             from_chars[float, char](cline + spans[6], cline + spans[7], tmpcoord)
             xyzarr_view[i * 3 + 2] = tmpcoord
 
-            self.r.advance()
+            self.r.get().advance()
 
         return xyzarr.reshape((natoms, 3))
 

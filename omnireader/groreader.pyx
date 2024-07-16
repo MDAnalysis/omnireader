@@ -5,6 +5,8 @@ from libcpp cimport bool
 from libcpp.string cimport string as stdstring
 from cython.operator import dereference
 cimport cython
+from libcpp.memory cimport unique_ptr
+
 
 import numpy as np
 from MDAnalysis.core.topologyattrs import (
@@ -53,10 +55,8 @@ cdef object stripwhitespace(const char* ptr, const char* end):
 
 
 cdef class GROReader:
-    cdef Reader* r
+    cdef unique_ptr[Reader] r
 
-    def __cinit__(self):
-        self.r = NULL
     
     def __init__(self, str fname):
         if fname.endswith('bz2'):
@@ -66,12 +66,9 @@ cdef class GROReader:
         else:
             self.r = GetReader(Format.PlainText)
 
-        if not self.r.open(fname):
+        if not self.r.get().open(fname):
             raise ValueError
 
-    def __dealloc__(self):
-        if (self.r != NULL):
-            del self.r
         
     @cython.wraparound(False)
     @cython.boundscheck(False)
@@ -81,17 +78,17 @@ cdef class GROReader:
         cdef float tmp
         cdef const char* ptr
 
-        self.r.advance()
-        lptr = self.r.line_start()
+        self.r.get().advance()
+        lptr = self.r.get().line_start()
         natoms = atoi(lptr)
-        self.r.advance()
+        self.r.get().advance()
 
         out = np.empty(natoms * 3, dtype=np.float32, order='C')
         cdef float [::1] coords = out
 
         i = 0
-        while not self.r.at_eof():
-            lptr = self.r.line_start()
+        while not self.r.get().at_eof():
+            lptr = self.r.get().line_start()
 
             if (i == 0):  # find spacing between coordinates
                 cs = (strchr(lptr + 25, 46) - (lptr + 25)) + 1  # 46 == .
@@ -105,7 +102,7 @@ cdef class GROReader:
             i += 1
             if i == natoms:
                 break
-            self.r.advance()
+            self.r.get().advance()
 
         return out.reshape(-1, 3)
 
@@ -120,9 +117,9 @@ cdef class GROReader:
         cdef object[::1] names_view
         cdef unsigned int[::1] indices_view
         
-        self.r.advance()
-        ptr = self.r.line_start()
-        self.r.advance()
+        self.r.get().advance()
+        ptr = self.r.get().line_start()
+        self.r.get().advance()
         natoms = atoi(ptr)
 
         resids = np.empty(natoms, dtype=np.uint32)
@@ -138,8 +135,8 @@ cdef class GROReader:
         cdef const char* lptr
         # [:5], [5:10], [10:15], [15:20]
         i = 0
-        while not self.r.at_eof():
-            lptr = self.r.line_start()
+        while not self.r.get().at_eof():
+            lptr = self.r.get().line_start()
 
             resids_view[i] = strtoint(lptr, lptr + 5)
             resnames_view[i] = stripwhitespace(lptr + 5, lptr + 10)
@@ -149,7 +146,7 @@ cdef class GROReader:
             i += 1
             if (i == natoms):
                 break
-            self.r.advance()
+            self.r.get().advance()
 
         return resids, resnames, names, indices
 
