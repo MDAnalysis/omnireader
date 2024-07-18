@@ -140,7 +140,7 @@ cdef class XYZFrameIter:
 
         return bool(ok)
 
-    def read_next_frame(self):
+    cpdef read_next_frame(self):
         cdef size_t current_offset
         cdef cbool ok
         current_offset = self.r.tell()
@@ -161,25 +161,46 @@ cdef class XYZFrameIter:
         if frameno >= self._offsets.size():
             self._offsets.push_back(offset)
 
-    cdef int read_n_frames(self):
+    @cython.cdivision(True)  # simplifies mod call
+    def read_n_frames(self) -> int:
         cdef int lines_per_frame = self.n_atoms + 2
+        cdef size_t prev = -1
         cdef int nlines = 0
-        cdef size_t frameno
+        cdef size_t frameno = 0
         # keep track of file handle position and restore this once we're done
         cdef size_t current = self.r.tell()
 
         try:
             self.r.seek(0, SEEK_SET)
             while not self.r.at_eof():
+                # each time we reach a multiple of nlines,
+                # save the offset that we last were at a multiple of nlines
+                # i.e. record each offset once we are sure it is a complete set
+                #      of lines
                 if not nlines % lines_per_frame:
-                    self._log_offset(frameno, self.r.tell())
-                    frameno += 1
+                    if prev != -1:  # ignore first entry
+                        self._log_offset(frameno, prev)
+                        frameno += 1
+                    prev = self.r.tell()
                 self.r.advance()
                 nlines += 1
         finally:
             self.r.seek(current, SEEK_SET)
 
         return self._offsets.size()
+
+    def get_offsets(self) -> list[int]:
+        """Get the frame offsets calculated so far
+
+        First calling read_n_frames will fully populate the offset buffer
+        """
+        cdef int i
+        cdef list output = []
+
+        for i in range(self._offsets.size()):
+            output.append(self._offsets[i])
+
+        return output
 
     def reopen(self):
         self.r.seek(0, SEEK_SET)
@@ -270,7 +291,7 @@ cdef class XYZFrameIter:
 
         return True
 
-    def read_coords(self):
+    cpdef read_coords(self):
         cdef object xyzarr
         cdef int natoms
         cline = self.r.line_start()
