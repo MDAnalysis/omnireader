@@ -29,7 +29,7 @@ cdef extern from "omnireader.h" namespace "OmniReader":
     Reader* GetReader(int f)
 
 
-cdef extern from "fast_float.h" namespace "fast_float":
+cdef extern from "fast_float/fast_float.h" namespace "fast_float":
     cppclass from_chars_result[UC]:
         pass
 
