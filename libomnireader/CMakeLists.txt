@@ -17,7 +17,9 @@ target_include_directories(omnireader PRIVATE ${ZLIB_INCLUDE_DIRS})
 set_target_properties(omnireader
         PROPERTIES PUBLIC_HEADER "include/omnireader.h")
 
-install(TARGETS omnireader
+add_subdirectory(rpc_xdr)
+
+install(TARGETS omnireader rpc_xdr
         DESTINATION omnireader
         PUBLIC_HEADER DESTINATION include
         )
