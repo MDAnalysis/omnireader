@@ -252,68 +252,85 @@ cdef class XDRUnpacker:
             return self.unpack_int()
 
 
+cdef class TpxHeader:
+    cdef readonly stdstring version_string
+    cdef readonly int precision
+    cdef readonly int file_version
+    cdef readonly int file_generation
+    cdef readonly stdstring file_tag
+    cdef readonly int natoms
+    cdef readonly int ngtc
+    cdef readonly int fep_state
+    cdef readonly double lamb
+    cdef readonly int bIr
+    cdef readonly int bTop
+    cdef readonly int bX
+    cdef readonly int bV
+    cdef readonly int bF
+    cdef readonly int bBox
+    cdef readonly unsigned long long size_of_tpr_body
+
+    def __init__(self):
+        pass
+
+
 def read_tpx_header(data):
     cdef XDRUnpacker u
-    cdef stdstring vers, file_tag
-    cdef int prec, file_version, file_gen
-    cdef int natoms, ngtc, fep_state
-    cdef double lamb
-    cdef int bIr, bTop, bX, bV, vF, bBox
-    cdef unsigned long long size_of_tpr_body
+    cdef TpxHeader header
+
+    header = TpxHeader()
 
     u = XDRUnpacker(data)
 
-    vers = u.do_string()
-    prec = u.unpack_int()
-    if prec == 8:
+    header.version_string = u.do_string()
+    header.precision = u.unpack_int()
+    if header.precision == 8:
         u.set_is_double(True)
 
-    file_version = u.unpack_int()
+    header.file_version = u.unpack_int()
 
-    if 77 <= file_version <= 79:
+    if 77 <= header.file_version <= 79:
         u.unpack_int()
         file_tag = u.do_string()
 
-    if file_version >= 26:
-        file_gen = u.unpack_int()
+    if header.file_version >= 26:
+        header.file_generation = u.unpack_int()
     else:
-        file_gen = 0
+        header.file_generation = 0
 
-    if file_version >= 81:
-        file_tag = u.do_string()
+    if header.file_version >= 81:
+        header.file_tag = u.do_string()
     else:
         # setting.TPX_TAG_RELEASE
-        file_tag = stdstring()
+        header.file_tag = b"release"
 
-    natoms = u.unpack_int()
-    if file_version >= 28:
-        ngtc = u.unpack_int()
+    header.natoms = u.unpack_int()
+    if header.file_version >= 28:
+        header.ngtc = u.unpack_int()
     else:
-        ngtc = 0
+        header.ngtc = 0
 
-    if file_version < 62:
+    if header.file_version < 62:
         u.unpack_int()  # idum
         u.unpack_real()  # rdum
 
-    if file_version >= 79:
-        fep_state = u.unpack_int()
+    if header.file_version >= 79:
+        header.fep_state = u.unpack_int()
     else:
-        fep_state = 0
+        header.fep_state = 0
 
-    lamb = u.unpack_real()
+    header.lamb = u.unpack_real()
 
-    bIr = u.unpack_int()
-    bTop = u.unpack_int()
-    bX = u.unpack_int()
-    bV = u.unpack_int()
-    bF = u.unpack_int()
-    bBox = u.unpack_int()
+    header.bIr = u.unpack_int()
+    header.bTop = u.unpack_int()
+    header.bX = u.unpack_int()
+    header.bV = u.unpack_int()
+    header.bF = u.unpack_int()
+    header.bBox = u.unpack_int()
 
-    size_of_tpr_body = 0
+    header.size_of_tpr_body = 0
     # setting.tpxc_addSizeField
-    if file_version >= 119 and file_gen >= 27:
-        size_of_tpr_body = u.unpack_int64()
+    if header.file_version >= 119 and header.file_generation >= 27:
+        header.size_of_tpr_body = u.unpack_int64()
 
-    return (vers, file_tag, prec, file_version, file_gen,
-            file_tag, natoms, ngtc, fep_state, lamb,
-            bIr, bTop, bX, bV, bF, bBox, size_of_tpr_body)
+    return header
