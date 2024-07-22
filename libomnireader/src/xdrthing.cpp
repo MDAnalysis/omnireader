@@ -13,7 +13,7 @@ public:
     virtual size_t get_uint64(const char *src, unsigned long long &output) = 0;
 };
 
-class LEImpl : public XDRImpl {
+class BEImpl : public XDRImpl {
     // can't make this virtual in the parent class
     // e.g. "template<typename T> virtual size_t get_thing(etc)" is a no go
     template <typename T>
@@ -43,7 +43,7 @@ class LEImpl : public XDRImpl {
     }
 };
 
-class BEImpl : public XDRImpl {
+class LEImpl : public XDRImpl {
     template <typename T>
     size_t get_thing(const char *src, T &output) {
         char tmp[sizeof(T)];
