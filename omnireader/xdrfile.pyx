@@ -250,3 +250,70 @@ cdef class XDRUnpacker:
             return j
         else:
             return self.unpack_int()
+
+
+def read_tpx_header(data):
+    cdef XDRUnpacker u
+    cdef stdstring vers, file_tag
+    cdef int prec, file_version, file_gen
+    cdef int natoms, ngtc, fep_state
+    cdef double lamb
+    cdef int bIr, bTop, bX, bV, vF, bBox
+    cdef unsigned long long size_of_tpr_body
+
+    u = XDRUnpacker(data)
+
+    vers = u.do_string()
+    prec = u.unpack_int()
+    if prec == 8:
+        u.set_is_double(True)
+
+    file_version = u.unpack_int()
+
+    if 77 <= file_version <= 79:
+        u.unpack_int()
+        file_tag = u.do_string()
+
+    if file_version >= 26:
+        file_gen = u.unpack_int()
+    else:
+        file_gen = 0
+
+    if file_version >= 81:
+        file_tag = u.do_string()
+    else:
+        # setting.TPX_TAG_RELEASE
+        file_tag = stdstring()
+
+    natoms = u.unpack_int()
+    if file_version >= 28:
+        ngtc = u.unpack_int()
+    else:
+        ngtc = 0
+
+    if file_version < 62:
+        u.unpack_int()  # idum
+        u.unpack_real()  # rdum
+
+    if file_version >= 79:
+        fep_state = u.unpack_int()
+    else:
+        fep_state = 0
+
+    lamb = u.unpack_real()
+
+    bIr = u.unpack_int()
+    bTop = u.unpack_int()
+    bX = u.unpack_int()
+    bV = u.unpack_int()
+    bF = u.unpack_int()
+    bBox = u.unpack_int()
+
+    size_of_tpr_body = 0
+    # setting.tpxc_addSizeField
+    if file_version >= 119 and file_gen >= 27:
+        size_of_tpr_body = u.unpack_int64()
+
+    return (vers, file_tag, prec, file_version, file_gen,
+            file_tag, natoms, ngtc, fep_state, lamb,
+            bIr, bTop, bX, bV, bF, bBox, size_of_tpr_body)
