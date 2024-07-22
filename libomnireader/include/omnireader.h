@@ -8,6 +8,8 @@
 #include <string>
 #include <cstring>
 
+#include "xdrthing.h"
+
 namespace OmniReader {
 
     enum Format {
