@@ -7,6 +7,10 @@ class XDRImpl {
 public:
     virtual size_t get_double(const char *src, double &output) = 0;
     virtual size_t get_float(const char *src, float &output) = 0;
+    virtual size_t get_int32(const char *src, int &output) = 0;
+    virtual size_t get_uint32(const char *src, unsigned int &output) = 0;
+    virtual size_t get_int64(const char *src, long long &output) = 0;
+    virtual size_t get_uint64(const char *src, unsigned long long &output) = 0;
 };
 
 class LEImpl : public XDRImpl {
@@ -23,6 +27,18 @@ class LEImpl : public XDRImpl {
         return get_thing(src, output);
     }
     size_t get_double(const char *src, double &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_int32(const char *src, int &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_uint32(const char *src, unsigned int &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_int64(const char *src, long long &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_uint64(const char *src, unsigned long long &output) final {
         return get_thing(src, output);
     }
 };
@@ -44,8 +60,19 @@ class BEImpl : public XDRImpl {
     size_t get_float(const char *src, float &output) final {
         return get_thing(src, output);
     }
-
     size_t get_double(const char *src, double &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_int32(const char *src, int &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_uint32(const char *src, unsigned int &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_int64(const char *src, long long &output) final {
+        return get_thing(src, output);
+    }
+    size_t get_uint64(const char *src, unsigned long long &output) final {
         return get_thing(src, output);
     }
 };
@@ -70,7 +97,18 @@ XDRThing::~XDRThing() {
 size_t XDRThing::get_float(const char *src, float &output) {
     return _impl->get_float(src, output);
 }
-
 size_t XDRThing::get_double(const char *src, double &output) {
     return _impl->get_double(src, output);
+}
+size_t XDRThing::get_int32(const char *src, int &output) {
+    return _impl->get_int32(src, output);
+}
+size_t XDRThing::get_uint32(const char *src, unsigned int &output) {
+    return _impl->get_uint32(src, output);
+}
+size_t XDRThing::get_int64(const char *src, long long &output) {
+    return _impl->get_int64(src, output);
+}
+size_t XDRThing::get_uint64(const char *src, unsigned long long &output) {
+    return _impl->get_uint64(src, output);
 }
