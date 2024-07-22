@@ -17,12 +17,12 @@ public:
 
     ~XDRThing();
 
-    size_t get_float(const char* src, float &output);
-    size_t get_double(const char *src, double &output);
-    size_t get_int32(const char *src, int &output);
-    size_t get_uint32(const char *src, unsigned int &output);
-    size_t get_int64(const char *src, long long &output);
-    size_t get_uint64(const char *src, unsigned long long &output);
+    size_t get_float(const char* src, float &output) const;
+    size_t get_double(const char *src, double &output) const;
+    size_t get_int32(const char *src, int &output) const;
+    size_t get_uint32(const char *src, unsigned int &output) const;
+    size_t get_int64(const char *src, long long &output) const;
+    size_t get_uint64(const char *src, unsigned long long &output) const;
     bool is_big_endian() const;
 private:
     XDRImpl* _impl;
