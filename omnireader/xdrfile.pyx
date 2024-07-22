@@ -1,24 +1,13 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 
-cdef extern from "xdr.h":
-    cdef enum xdr_op:
-        XDR_ENCODE=0
-        XDR_DECODE=1
-        XDR_FREE=2
-
-    cppclass XDR:
-        pass
-
-    cdef void xdrmem_create(XDR *xdr, char* buf,
-                            unsigned int size, xdr_op op)
-
-    cdef int XDR_SETPOS(XDR *xdr, unsigned int pos)
-    cdef int XDR_GETINT32(XDR *xdr, int *pos)
-    # cdef int XDR_GET_U_INT32(XDR *xdr, unsigned int *pos)
+cdef extern from "omnireader.h":
+    cppclass XDRThing:
+        size_t get_float(const char *src, float &output)
+        size_t get_int32(const char *src, int &output)
 
 cdef class XDRUnpacker:
-    cdef XDR impl
+    cdef XDRThing converter
     cdef char *buffer
     cdef char *ptr
     cdef int length
@@ -32,7 +21,6 @@ cdef class XDRUnpacker:
         cdef size_t n
 
         self._set_buffer(data, len(data))
-        self.ptr = self.buffer
 
     def __dealloc__(self):
         if self.buffer != NULL:
@@ -47,8 +35,8 @@ cdef class XDRUnpacker:
         if self.buffer is NULL:
             raise ValueError("Failed to allocate buffer")
         memcpy(self.buffer, data, size * sizeof(char))
-        # next initialise the XDR object
-        xdrmem_create(&self.impl, self.buffer, self.length, xdr_op.XDR_DECODE)
+
+        self.ptr = self.buffer
 
     def reset(self, bytes data):
         self._set_buffer(data, len(data))
@@ -56,10 +44,8 @@ cdef class XDRUnpacker:
     cpdef int get_position(self):
         return self.ptr - self.buffer
 
-    cdef void set_position(self, unsigned int pos):
-        cdef unsigned int i
-        cdef unsigned int j=44
-        i = XDR_SETPOS(&self.impl, j)
+    cdef void set_position(self, int pos):
+        self.ptr = self.buffer + pos
 
     def get_buffer(self) -> bytes:
         return b''
@@ -71,12 +57,14 @@ cdef class XDRUnpacker:
         pass
 
     def unpack_int(self) -> int:
-        cdef int i
-        cdef int ret = 0
+        cdef int i=0
+        cdef size_t ret
 
-        i = XDR_GETINT32(&self.impl, &ret)
+        ret = self.converter.get_int32(self.ptr, i)
 
-        return ret
+        self.ptr += ret
+
+        return i
 
     def unpack_uint64(self) -> int:
         pass
