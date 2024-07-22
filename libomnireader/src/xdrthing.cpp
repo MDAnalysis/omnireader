@@ -10,41 +10,43 @@ public:
 };
 
 class LEImpl : public XDRImpl {
-    size_t get_float(const char *src, float &output) final {
-        output = *((float*)(src));
+    // can't make this virtual in the parent class
+    // e.g. "template<typename T> virtual size_t get_thing(etc)" is a no go
+    template <typename T>
+    size_t get_thing(const char *src, T &output) {
+        output = *((T*)src);
 
-        return sizeof(float);
+        return sizeof(T);
+    }
+
+    size_t get_float(const char *src, float &output) final {
+        return get_thing(src, output);
     }
     size_t get_double(const char *src, double &output) final {
-        output = *((double*)(src));
-
-        return sizeof(double);
+        return get_thing(src, output);
     }
 };
 
 class BEImpl : public XDRImpl {
-    size_t get_float(const char *src, float &output) final {
-        char tmp[4];
+    template <typename T>
+    size_t get_thing(const char *src, T &output) {
+        char tmp[sizeof(T)];
 
-        for (int i=0; i<4; i++) {
-            tmp[i] = src[3-i];
+        for (size_t i=0; i<sizeof(T); i++) {
+            tmp[i] = src[sizeof(T) - 1 - i];
         }
 
-        output = *((float*)(tmp));
+        output = *((T*)tmp);
 
-        return sizeof(float);
+        return sizeof(T);
+    }
+
+    size_t get_float(const char *src, float &output) final {
+        return get_thing(src, output);
     }
 
     size_t get_double(const char *src, double &output) final {
-        char tmp[8];
-
-        for (int i=0; i<8; i++) {
-            tmp[i] = src[7-i];
-        }
-
-        output = *((double*)(tmp));
-
-        return sizeof(double);
+        return get_thing(src, output);
     }
 };
 
