@@ -28,8 +28,7 @@ install(TARGETS omnireader rpc_xdr
         PUBLIC_HEADER DESTINATION include
         )
 
-add_executable(test_lines test/test_lines.cpp
-        test/test_xdrthing.cpp)
+add_executable(test_lines test/test_lines.cpp)
 target_link_libraries(test_lines omnireader)
 
 add_executable(test_seekntell test/test_seekntell.cpp)
