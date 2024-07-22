@@ -1,5 +1,9 @@
+cimport cython
+
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
+from libcpp.string cimport string as stdstring
+
 
 cdef extern from "omnireader.h":
     cppclass XDRThing:
@@ -9,6 +13,7 @@ cdef extern from "omnireader.h":
         size_t get_uint32(const char *src, unsigned int &output)
         size_t get_int64(const char *src, long long &output)
         size_t get_uint64(const char *src, unsigned long long &output)
+
 
 cdef class XDRUnpacker:
     cdef XDRThing converter
@@ -46,7 +51,7 @@ cdef class XDRUnpacker:
     cpdef int get_position(self):
         return self.ptr - self.buffer
 
-    cdef void set_position(self, int pos):
+    cpdef void set_position(self, int pos):
         self.ptr = self.buffer + pos
 
     def get_buffer(self) -> bytes:
@@ -123,13 +128,26 @@ cdef class XDRUnpacker:
 
         return i
 
-    def unpack_fstring(self):
-        pass
+    @cython.cdivision(True)  # we want floor division inside here
+    cpdef stdstring unpack_fstring(self, int n):
+        cdef int j
+
+        s = stdstring(self.ptr, n)
+
+        # advance pointer to multiple of n bytes
+        j = (n + 3) / 4 * 4
+
+        self.ptr += j
+
+        return s
 
     unpack_fopaque = unpack_fstring
 
-    def unpack_string(self):
-        pass
+    cpdef stdstring unpack_string(self):
+        cdef int i
+        i = self.unpack_int()
+
+        return self.unpack_fstring(i)
 
     unpack_opaque = unpack_string
 
