@@ -23,7 +23,7 @@ public:
     size_t get_uint32(const char *src, unsigned int &output);
     size_t get_int64(const char *src, long long &output);
     size_t get_uint64(const char *src, unsigned long long &output);
-
+    bool is_big_endian() const;
 private:
     XDRImpl* _impl;
 };
