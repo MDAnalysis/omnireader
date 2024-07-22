@@ -349,7 +349,7 @@ extern bool_t xdr_netobj (XDR *__xdrs, struct netobj *__np);
  */
 
 /* XDR using memory buffers */
-extern void xdrmem_create (XDR *__xdrs, const char* __addr,
+extern void xdrmem_create (XDR *__xdrs, char* __addr,
 			   unsigned int __size, enum xdr_op __xop);
 
 /* XDR using stdio library */

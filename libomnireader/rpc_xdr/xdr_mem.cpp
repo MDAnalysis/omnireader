@@ -126,7 +126,7 @@ static uint32_t xdr_ntohl(uint32_t x)
 void
 xdrmem_create(
 	XDR *xdrs,
-	caddr_t addr,
+	char *addr,
 	u_int size,
 	enum xdr_op op)
 {
@@ -182,7 +182,7 @@ xdrmem_getbytes(XDR *xdrs, caddr_t addr, u_int len)
 }
 
 static bool_t
-xdrmem_putbytes(XDR *xdrs, const caddr_t addr, u_int len)
+xdrmem_putbytes(XDR *xdrs, const char *addr, u_int len)
 {
 
 	if ((u_int)xdrs->x_handy < len)

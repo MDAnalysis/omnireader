@@ -32,5 +32,5 @@ else()
     set_target_properties(xyzreader PROPERTIES INSTALL_RPATH "\$ORIGIN")
 endif()
 
-install(TARGETS groreader xyzreader linesupplier
+install(TARGETS groreader xyzreader linesupplier xdrfile
      LIBRARY DESTINATION omnireader)
