@@ -23,6 +23,7 @@ cdef class XDRUnpacker:
     cdef char *buffer
     cdef char *ptr
     cdef int length
+    cdef int is_2020
 
     def __cinit__(self):
         self.buffer = NULL
@@ -31,6 +32,7 @@ cdef class XDRUnpacker:
 
     def __init__(self, bytes data):
         self._set_buffer(data, len(data))
+        self.is_2020 = 0
 
     def __dealloc__(self):
         if self.buffer != NULL:
@@ -56,6 +58,35 @@ cdef class XDRUnpacker:
 
     cpdef void set_position(self, int pos):
         self.ptr = self.buffer + pos
+
+    cpdef set_is_2020(self, int i):
+        """Toggle 2020 behaviour
+
+        This changes the working of:
+         - do_string
+           - pre 2020, two ints followed by fstring (see below)
+           - post 2020, one int64 followed by fstring (see below)
+         - unpack_fstring
+           - post 2020 no longer padded to 4 byte boundary
+         - unpack_ushort
+           - post 2020 uses 2 bytes not 4
+         - unpack_uchar
+           - post 2020 uses 1 byte not 4 per char
+        """
+        self.is_2020 = i
+
+    cpdef stdstring do_string(self):
+        cdef int i32
+        cdef unsigned long long i64
+
+        if self.is_2020:
+            i64 = self.unpack_uint64()
+            return self.unpack_fstring(i64)
+        else:
+            # this seems to mean there's a useless int before each string
+            # as unpack_string reads the length itself
+            i32 = self.unpack_int()
+            return self.unpack_string()
 
     def get_buffer(self) -> bytes:
         return b''
@@ -137,8 +168,12 @@ cdef class XDRUnpacker:
 
         s = stdstring(self.ptr, n)
 
-        # advance pointer to multiple of n bytes
-        j = (n + 3) / 4 * 4
+        if self.is_2020:
+            # this version seems to not pad strings to 4 byte boundaries
+            j = n
+        else:
+            # advance pointer to multiple of n bytes
+            j = (n + 3) / 4 * 4
 
         self.ptr += j
 
@@ -164,3 +199,41 @@ cdef class XDRUnpacker:
 
     def unpack_array(self, unpack_item):
         pass
+
+    cpdef char unpack_uchar(self):
+        cdef char val
+        cdef int i
+
+        if self.is_2020:
+            # these are one byte long
+            val = self.ptr[0]
+            self.ptr += 1
+        else:
+            # older version, 4 bytes per char
+            i = self.unpack_int()
+            val = i
+
+        return val
+
+    cpdef unsigned int unpack_ushort(self):
+        cdef int i
+        cdef unsigned short j
+        cdef size_t ret
+        cdef char tmp[2]
+
+        if self.is_2020:
+            # this uses 2 bytes per short, still in network (BE) representation
+            if self.converter.is_big_endian():
+                tmp[0] = self.ptr[1]
+                tmp[1] = self.ptr[0]
+            else:
+                tmp[0] = self.ptr[0]
+                tmp[1] = self.ptr[1]
+
+            j = dereference(<unsigned short*>&tmp)
+
+            self.ptr += 2
+
+            return j
+        else:
+            return self.unpack_int()
