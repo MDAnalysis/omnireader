@@ -24,11 +24,13 @@ cdef class XDRUnpacker:
     cdef char *ptr
     cdef int length
     cdef int is_2020
+    cdef cbool double_prec
 
     def __cinit__(self):
         self.buffer = NULL
         self.ptr = NULL
         self.length = 0
+        self.double_prec = False
 
     def __init__(self, bytes data):
         self._set_buffer(data, len(data))
@@ -75,7 +77,18 @@ cdef class XDRUnpacker:
         """
         self.is_2020 = i
 
+    cpdef void set_is_double(self, cbool is_double):
+        """Toggles the behaviour of unpack_real"""
+        self.double_prec = is_double
+
+    cpdef double unpack_real(self):
+        if self.double_prec:
+            return self.unpack_double()
+        else:
+            return self.unpack_float()
+
     cpdef stdstring do_string(self):
+        """This is different to unpack_string."""
         cdef int i32
         cdef unsigned long long i64
 
