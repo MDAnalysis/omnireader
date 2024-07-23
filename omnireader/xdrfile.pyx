@@ -275,9 +275,6 @@ cdef class TpxHeader:
     cdef readonly int bBox
     cdef readonly unsigned long long size_of_tpr_body
 
-    def __init__(self):
-        pass
-
 
 cdef class Box:
     cdef readonly double box[3]
@@ -292,9 +289,7 @@ cpdef TpxHeader read_tpx_header(XDRUnpacker u):
     - precision (toggles unpack_real behaviour)
     - is_2020
     """
-    cdef TpxHeader header
-
-    header = TpxHeader()
+    cdef TpxHeader header = TpxHeader()
 
     header.version_string = u.do_string()
     header.precision = u.unpack_int()
