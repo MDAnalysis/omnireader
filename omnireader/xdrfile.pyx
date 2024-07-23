@@ -20,10 +20,12 @@ cdef extern from "omnireader.h":
 
 cdef class XDRUnpacker:
     cdef XDRThing converter
+    # todo: make this a stdstring?  essentially a smart pointer for bytes
+    #       ptr would then be a size_t onto buffer.c_str()
     cdef char *buffer
     cdef char *ptr
     cdef int length
-    cdef int is_2020
+    cdef cbool is_2020
     cdef cbool double_prec
 
     def __cinit__(self):
@@ -34,7 +36,8 @@ cdef class XDRUnpacker:
 
     def __init__(self, bytes data):
         self._set_buffer(data, len(data))
-        self.is_2020 = 0
+        self.double_prec = False
+        self.is_2020 = False
 
     def __dealloc__(self):
         if self.buffer != NULL:
@@ -53,6 +56,8 @@ cdef class XDRUnpacker:
         self.ptr = self.buffer
 
     def reset(self, bytes data):
+        self.double_prec = False
+        self.is_2020 = False
         self._set_buffer(data, len(data))
 
     cpdef int get_position(self):
@@ -61,7 +66,7 @@ cdef class XDRUnpacker:
     cpdef void set_position(self, int pos):
         self.ptr = self.buffer + pos
 
-    cpdef set_is_2020(self, int i):
+    cpdef set_is_2020(self, cbool i):
         """Toggle 2020 behaviour
 
         This changes the working of:
@@ -274,13 +279,22 @@ cdef class TpxHeader:
         pass
 
 
-def read_tpx_header(data):
-    cdef XDRUnpacker u
+cdef class Box:
+    cdef readonly double box[3]
+    cdef readonly double box_rel[3]
+    cdef readonly double box_v[3]
+
+
+cpdef TpxHeader read_tpx_header(XDRUnpacker u):
+    """Reads tpx header
+    
+    Also updates the XDRUnpacker to follow flags in the header:
+    - precision (toggles unpack_real behaviour)
+    - is_2020
+    """
     cdef TpxHeader header
 
     header = TpxHeader()
-
-    u = XDRUnpacker(data)
 
     header.version_string = u.do_string()
     header.precision = u.unpack_int()
@@ -338,3 +352,35 @@ def read_tpx_header(data):
         u.set_is_2020(1)
 
     return header
+
+
+cdef Box extract_box_info(XDRUnpacker up):
+    cdef Box b = Box()
+    cdef int i
+    cdef double x
+
+    for i in range(3):
+        x = up.unpack_real()
+        b.box[i] = x
+    for i in range(3):
+        x = up.unpack_real()
+        b.box_rel[i] = x
+    for i in range(3):
+        x = up.unpack_real()
+        b.box_v[i] = x
+
+    return b
+
+
+def parse(bytes data):
+    cdef XDRUnpacker up
+    cdef TpxHeader header
+    cdef Box box
+
+    up = XDRUnpacker(data)
+
+    header = read_tpx_header(up)
+
+    box = extract_box_info(up)
+
+    return header, box
