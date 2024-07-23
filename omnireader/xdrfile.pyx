@@ -25,8 +25,8 @@ cdef class XDRUnpacker:
     cdef char *buffer
     cdef char *ptr
     cdef int length
-    cdef cbool is_2020
-    cdef cbool double_prec
+    cdef readonly cbool is_2020
+    cdef readonly cbool double_prec
 
     def __cinit__(self):
         self.buffer = NULL
