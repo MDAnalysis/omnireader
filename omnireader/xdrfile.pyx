@@ -277,9 +277,9 @@ cdef class TpxHeader:
 
 
 cdef class Box:
-    cdef readonly double box[3]
-    cdef readonly double box_rel[3]
-    cdef readonly double box_v[3]
+    cdef readonly double box[9]
+    cdef readonly double box_rel[9]
+    cdef readonly double box_v[9]
 
 
 cpdef TpxHeader read_tpx_header(XDRUnpacker u):
@@ -354,13 +354,13 @@ cdef Box extract_box_info(XDRUnpacker up):
     cdef int i
     cdef double x
 
-    for i in range(3):
+    for i in range(9):
         x = up.unpack_real()
         b.box[i] = x
-    for i in range(3):
+    for i in range(9):
         x = up.unpack_real()
         b.box_rel[i] = x
-    for i in range(3):
+    for i in range(9):
         x = up.unpack_real()
         b.box_v[i] = x
 
