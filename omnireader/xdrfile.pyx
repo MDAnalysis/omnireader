@@ -259,6 +259,27 @@ cdef class XDRUnpacker:
         else:
             return self.unpack_int()
 
+    cdef skip(self, int amount):
+        # skip a number of bytes
+        self.ptr += amount
+
+    cpdef skip_real(self):
+        self.skip(4)
+        if self.double_prec:
+            self.skip(4)
+
+    cpdef skip_int32(self):
+        self.skip(4)
+
+    cpdef skip_int64(self):
+        self.skip(8)
+
+    cpdef skip_float(self):
+        self.skip(4)
+
+    cpdef skip_double(self):
+        self.skip(8)
+
 
 cdef class TpxHeader:
     cdef readonly stdstring version_string
