@@ -6,6 +6,7 @@ from libc.string cimport memcpy
 from libcpp.string cimport string as stdstring
 from libcpp.vector cimport vector
 from libcpp cimport bool as cbool
+from libcpp.set cimport set as cset
 
 
 cdef extern from "omnireader.h":
@@ -17,6 +18,111 @@ cdef extern from "omnireader.h":
         size_t get_uint32(const char *src, unsigned int &output) const
         size_t get_int64(const char *src, long long &output) const
         size_t get_uint64(const char *src, unsigned long long &output) const
+
+cdef extern from "tpr_settings.h":
+    cset[int] SUPPORTED_VERSIONS
+    cppclass t_ftupd:
+        int fnvr
+        int ftype
+    t_ftupd* ftupd
+    int NFTUPD
+
+    enum interaction_functions:
+        F_BONDS
+        F_G96BONDS
+        F_MORSE
+        F_CUBICBONDS
+        F_CONNBONDS
+        F_HARMONIC
+        F_FENEBONDS
+        F_TABBONDS
+        F_TABBONDSNC
+        F_RESTRBONDS
+        F_ANGLES
+        F_G96ANGLES
+        F_RESTRANGLES
+        F_LINEAR_ANGLES
+        F_CROSS_BOND_BONDS
+        F_CROSS_BOND_ANGLES
+        F_UREY_BRADLEY
+        F_QUARTIC_ANGLES
+        F_TABANGLES
+        F_PDIHS
+        F_RBDIHS
+        F_RESTRDIHS
+        F_CBTDIHS
+        F_FOURDIHS
+        F_IDIHS
+        F_PIDIHS
+        F_TABDIHS
+        F_CMAP
+        F_GB12
+        F_GB13
+        F_GB14
+        F_GBPOL
+        F_NPSOLVATION
+        F_LJ14
+        F_COUL14
+        F_LJC14_Q
+        F_LJC_PAIRS_NB
+        F_LJ
+        F_BHAM
+        F_LJ_LR
+        F_BHAM_LR
+        F_DISPCORR
+        F_COUL_SR
+        F_COUL_LR
+        F_RF_EXCL
+        F_COUL_RECIP
+        F_LJ_RECIP
+        F_DPD
+        F_POLARIZATION
+        F_WATER_POL
+        F_THOLE_POL
+        F_ANHARM_POL
+        F_POSRES
+        F_FBPOSRES
+        F_DISRES
+        F_DISRESVIOL
+        F_ORIRES
+        F_ORIRESDEV
+        F_ANGRES
+        F_ANGRESZ
+        F_DIHRES
+        F_DIHRESVIOL
+        F_CONSTR
+        F_CONSTRNC
+        F_SETTLE
+        F_VSITE1
+        F_VSITE2
+        F_VSITE2FD
+        F_VSITE3
+        F_VSITE3FD
+        F_VSITE3FAD
+        F_VSITE3OUT
+        F_VSITE4FD
+        F_VSITE4FDN
+        F_VSITEN
+        F_COM_PULL
+        F_DENSITYFITTING
+        F_EQM
+        F_EPOT
+        F_EKIN
+        F_ETOT
+        F_ECONSERVED
+        F_TEMP
+        F_VTEMP_NOLONGERUSED
+        F_PDISPCORR
+        F_PRES
+        F_DHDL_CON
+        F_DVDL
+        F_DKDL
+        F_DVDL_COUL
+        F_DVDL_VDW
+        F_DVDL_BONDED
+        F_DVDL_RESTRAINT
+        F_DVDL_TEMPERATURE
+        F_NRE
 
 
 cdef class XDRUnpacker:
@@ -267,7 +373,7 @@ cdef class XDRUnpacker:
         """
         self.ptr += amount
 
-    cdef skip_real(self, int n):
+    cpdef skip_real(self, int n):
         """skip n reals"""
         self.skip(n * 4)
         if self.double_prec:
@@ -391,13 +497,191 @@ cdef vector[stdstring] do_symtab(XDRUnpacker up):
 
     return symtab
 
+cdef void do_iparams(XDRUnpacker up,
+                     TpxHeader header,
+                     vector[int]& ftypes):
+    """Skip past the various parameters
+    
+    We don't read any of these values, but we need to advance the file pointer
+    past these values to get to the good bit
+    """
+    cdef int i, j
 
-def do_mtop(XDRUnpacker up):
+    for i in range(ftypes.size()):
+        j = ftypes[i]
+
+        # by the end of this you'll wish you had switch statements...
+        # luckily the compiler will sort this out for us
+
+        # TODO: Check and annotate with parameter names
+        if (j == interaction_functions.F_ANGLES or
+            j == interaction_functions.F_G96ANGLES or
+            j == interaction_functions.F_BONDS or
+            j == interaction_functions.F_G96BONDS or
+            j == interaction_functions.F_IDIHS):
+            # do_harm, i.e. rA, krA, rB, krB
+            up.skip_real(4)
+        elif j == interaction_functions.F_RESTRANGLES:
+            up.skip_real(2)
+        elif j == interaction_functions.F_LINEAR_ANGLES:
+            up.skip_real(4)
+        elif j == interaction_functions.F_FENEBONDS:
+            up.skip_real(2)
+        elif j == interaction_functions.F_RESTRBONDS:
+            up.skip_real(8)
+        elif (j == interaction_functions.F_TABBONDS or
+              j == interaction_functions.F_TABBONDSNC or
+              j == interaction_functions.F_TABANGLES or
+              j == interaction_functions.F_TABDIHS):
+            up.skip_real(1)
+            up.skip_int32(1)
+            up.skip_real(1)
+        elif j == interaction_functions.F_CROSS_BOND_BONDS:
+            up.skip_real(3)
+        elif j == interaction_functions.F_CROSS_BOND_ANGLES:
+            up.skip_real(4)
+        elif j == interaction_functions.F_UREY_BRADLEY:
+            up.skip_real(4)
+            if header.file_version >= 79:
+                up.skip_real(4)
+        elif j == interaction_functions.F_QUARTIC_ANGLES:
+            up.skip_real(6)
+        elif j == interaction_functions.F_BHAM:
+            up.skip_real(3)
+        elif j == interaction_functions.F_MORSE:
+            up.skip_real(3)
+            if header.file_version >= 79:
+                up.skip_real(3)
+        elif j == interaction_functions.F_CUBICBONDS:
+            up.skip_real(3)
+        elif j == interaction_functions.F_CONNBONDS:
+            pass
+        elif j == interaction_functions.F_POLARIZATION:
+            up.skip_real(1)
+        elif j == interaction_functions.F_ANHARM_POL:
+            up.skip_real(3)
+        elif j == interaction_functions.F_WATER_POL:
+            up.skip_real(6)
+        elif j == interaction_functions.F_THOLE_POL:
+            up.skip_real(3)
+            if header.file_version < 127:  #  tpxv_RemoveTholeRfac
+                up.skip_real(1)
+        elif j == interaction_functions.F_LJ:
+            up.skip_real(2)
+        elif j == interaction_functions.F_LJ14:
+            up.skip_real(4)
+        elif j == interaction_functions.F_LJC14_Q:
+            up.skip_real(5)
+        elif j == interaction_functions.F_LJC_PAIRS_NB:
+            up.skip_real(4)
+        elif (j == interaction_functions.F_PIDIHS or
+              j == interaction_functions.F_ANGRES or
+              j == interaction_functions.F_ANGRESZ or
+              j == interaction_functions.F_PDIHS):
+            up.skip_real(4)
+            up.skip_int32(1)
+        elif  j == interaction_functions.F_RESTRDIHS:
+            up.skip_real(2)
+        elif j == interaction_functions.F_DISRES:
+            up.skip_int32(2)
+            up.skip_real(4)
+        elif j == interaction_functions.F_ORIRES:
+            up.skip_int32(3)
+            up.skip_real(3)
+        elif j == interaction_functions.F_DIHRES:
+            if header.file_version < 72:
+                up.skip_int32(2)
+            up.skip_real(3)
+            if header.file_version >= 72:
+                up.skip_real(3)
+        elif j == interaction_functions.F_POSRES:
+            # 4 x do_rvec
+            up.skip_real(3 * 4)
+        elif j == interaction_functions.F_FBPOSRES:
+            up.skip_int32(1)
+            up.skip_real(3 + 2)  # do_rvec + 2
+        elif j == interaction_functions.F_CBTDIHS:
+            up.skip_real(6)  #  6 == NR_CBTDIHS
+        elif j == interaction_functions.F_RBDIHS:
+            up.skip_real(2 * 6)  # 6 == NR_RBDIHS
+        elif j == interaction_functions.F_FOURDIHS:
+            up.skip_real(2 * 6)  # 6 == NR_RBDIHS
+        elif (j == interaction_functions.F_CONSTR or
+              j == interaction_functions.F_CONSTRNC):
+            up.skip_real(2)
+        elif j == interaction_functions.F_SETTLE:
+            up.skip_real(2)
+        elif j == interaction_functions.F_VSITE1:
+            pass
+        elif (j == interaction_functions.F_VSITE2 or
+              j == interaction_functions.F_VSITE2FD):
+            up.skip_real(1)
+        elif (j == interaction_functions.F_VSITE3 or
+              j == interaction_functions.F_VSITE3FD or
+              j == interaction_functions.F_VSITE3FAD):
+            up.skip_real(2)
+        elif (j == interaction_functions.F_VSITE3OUT or
+              j == interaction_functions.F_VSITE4FD or
+              j == interaction_functions.F_VSITE4FDN):
+            up.skip_real(3)
+        elif j == interaction_functions.F_VSITEN:
+            up.skip_int32(1)
+            up.skip_real(1)
+        elif (j == interaction_functions.F_GB12 or
+              j == interaction_functions.F_GB13 or
+              j == interaction_functions.F_GB14):
+            if header.file_version < 68:
+                up.skip_real(4)
+            up.skip_real(5)
+        elif j == interaction_functions.F_CMAP:
+            up.skip_int32(2)
+        else:
+            raise ValueError
+
+
+cdef void do_ffparams(XDRUnpacker up, TpxHeader header):
+    """Currently just skips..."""
+    cdef int i, j
+    cdef int k0, k1
+    cdef int atnr, ntypes
+    cdef t_ftupd *ftupd_ptr
+    cdef double reppow, fudgeQQ
+    cdef vector[int] functype = vector[int]()
+
+    atnr = up.unpack_int()
+    ntypes = up.unpack_int()
+    functype.reserve(ntypes)
+    for i in range(ntypes):  # ndo_int
+        functype.push_back(up.unpack_int())
+
+    if header.file_version >= 66:
+        reppow = up.unpack_double()
+    else:
+        reppow = 12.0
+    fudgeQQ = up.unpack_real()
+
+    for i in range(ntypes):
+        for j in range(NFTUPD):
+            k0 = (ftupd + j).fnvr
+            k1 = (ftupd + j).ftype
+
+            if header.file_version < k0 and functype[i] >= k1:
+                functype[i] += 1
+
+    do_iparams(up, header, functype)
+
+
+def do_mtop(XDRUnpacker up,
+            TpxHeader header):
     cdef vector[stdstring] symtab
 
     symtab = do_symtab(up)
 
     up.skip_int32(1)  # system_name symstr call
+
+    do_ffparams(up, header)
+
+    print('after ff_params at: ', up.get_position())
 
     return symtab
 
@@ -440,6 +724,12 @@ def parse(bytes data):
         up.skip_real(1)  # relevant to Berendsen tcoupl_lambda
 
     if header.bTop:
-        do_mtop(up)
+        do_mtop(up, header)
 
     return header, box
+
+def allowed_version(int i):
+    cdef int ret
+    ret = SUPPORTED_VERSIONS.count(i)
+
+    return ret
