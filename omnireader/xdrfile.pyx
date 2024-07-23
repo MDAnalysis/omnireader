@@ -380,6 +380,7 @@ cdef vector[stdstring] do_symtab(XDRUnpacker up):
     cdef stdstring sym
     symtab_nr = up.unpack_int()
     symtab = vector[stdstring]()
+    symtab.reserve(symtab_nr)
     for i in range(symtab_nr):
         sym = up.do_string()
         symtab.push_back(sym)
