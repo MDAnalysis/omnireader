@@ -260,26 +260,30 @@ cdef class XDRUnpacker:
         else:
             return self.unpack_int()
 
-    cdef skip(self, int amount):
-        # skip a number of bytes
+    cdef skip(self, size_t amount):
+        """skip a number of bytes ahead
+        
+        saves doing byte swaps on stuff we're not going to look at
+        """
         self.ptr += amount
 
-    cpdef skip_real(self):
-        self.skip(4)
+    cdef skip_real(self, int n):
+        """skip n reals"""
+        self.skip(n * 4)
         if self.double_prec:
-            self.skip(4)
+            self.skip(n * 4)
 
-    cpdef skip_int32(self):
-        self.skip(4)
+    cdef skip_int32(self, int n):
+        self.skip(n * 4)
 
-    cpdef skip_int64(self):
-        self.skip(8)
+    cdef skip_int64(self, int n):
+        self.skip(n * 8)
 
-    cpdef skip_float(self):
-        self.skip(4)
+    cdef skip_float(self, int n):
+        self.skip(n * 4)
 
-    cpdef skip_double(self):
-        self.skip(8)
+    cdef skip_double(self, int n):
+        self.skip(n * 8)
 
 
 cdef class TpxHeader:
@@ -393,7 +397,7 @@ def do_mtop(XDRUnpacker up):
 
     symtab = do_symtab(up)
 
-    up.skip_int32()  # system_name symstr call
+    up.skip_int32(1)  # system_name symstr call
 
     return symtab
 
@@ -432,8 +436,8 @@ def parse(bytes data):
 
     for i in range(header.ngtc):
         if header.file_version < 69:
-            up.skip_real()
-        up.skip_real()  # relevant to Berendsen tcoupl_lambda
+            up.skip_real(1)
+        up.skip_real(1)  # relevant to Berendsen tcoupl_lambda
 
     if header.bTop:
         do_mtop(up)
