@@ -55,6 +55,9 @@ cdef class XDRUnpacker:
 
         self.ptr = self.buffer
 
+    cpdef stdstring read(self, int n):
+        return stdstring(self.ptr, n)
+
     def reset(self, bytes data):
         self.double_prec = False
         self.is_2020 = False
@@ -66,7 +69,7 @@ cdef class XDRUnpacker:
     cpdef void set_position(self, int pos):
         self.ptr = self.buffer + pos
 
-    cpdef set_is_2020(self, cbool i):
+    cpdef void set_is_2020(self, cbool i):
         """Toggle 2020 behaviour
 
         This changes the working of:
