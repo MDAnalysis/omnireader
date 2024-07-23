@@ -10,7 +10,7 @@ if (${BUILD_PYTHON})
     include_directories(${NumPy_INCLUDE_DIRS})
 endif ()
 include_directories(${PROJECT_SOURCE_DIR}/libomnireader/include)
-include_directories(${PROJECT_SOURCE_DIR}/libomnireader/rpc_xdr)
+include_directories(${PROJECT_SOURCE_DIR}/omnireader/)
 
 # use, i.e. don't skip the full RPATH for the build tree
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
