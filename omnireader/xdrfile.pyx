@@ -4,6 +4,7 @@ from cython.operator cimport dereference
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from libcpp.string cimport string as stdstring
+from libcpp.vector cimport vector
 from libcpp cimport bool as cbool
 
 
@@ -373,6 +374,29 @@ cpdef TpxHeader read_tpx_header(XDRUnpacker u):
     return header
 
 
+cdef vector[stdstring] do_symtab(XDRUnpacker up):
+    cdef size_t i, symtab_nr
+    cdef vector[stdstring] symtab
+    cdef stdstring sym
+    symtab_nr = up.unpack_int()
+    symtab = vector[stdstring]()
+    for i in range(symtab_nr):
+        sym = up.do_string()
+        symtab.push_back(sym)
+
+    return symtab
+
+
+def do_mtop(XDRUnpacker up):
+    cdef vector[stdstring] symtab
+
+    symtab = do_symtab(up)
+
+    up.skip_int32()  # system_name symstr call
+
+    return symtab
+
+
 cdef Box extract_box_info(XDRUnpacker up):
     cdef Box b = Box()
     cdef int i
@@ -395,11 +419,22 @@ def parse(bytes data):
     cdef XDRUnpacker up
     cdef TpxHeader header
     cdef Box box
+    cdef int i
 
     up = XDRUnpacker(data)
 
     header = read_tpx_header(up)
+    if header.bBox:
+        box = extract_box_info(up)
+    else:
+        box = Box()
 
-    box = extract_box_info(up)
+    for i in range(header.ngtc):
+        if header.file_version < 69:
+            up.skip_real()
+        up.skip_real()  # relevant to Berendsen tcoupl_lambda
+
+    if header.bTop:
+        do_mtop(up)
 
     return header, box
