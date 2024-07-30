@@ -684,19 +684,248 @@ cdef void do_ffparams(XDRUnpacker up, TpxHeader header):
     do_iparams(up, header, functype)
 
 
-def do_mtop(XDRUnpacker up,
-            TpxHeader header):
+cdef struct Atom:
+    double mass
+    double charge
+    # cdef double massB
+    # cdef double chargeB
+    int type_
+    # cdef int typeB
+    int ptype
+    int resind
+    int atomnumber
+
+
+cdef inline Atom do_atom(XDRUnpacker up):
+    cdef Atom a = Atom()
+
+    a.mass = up.unpack_real()
+    a.charge = up.unpack_real()
+    up.skip_real(2)  # massB and chargeB
+    a.type_ = up.unpack_ushort()
+    up.skip_ushort(1)  # typeB
+    a.ptype = up.unpack_int()
+    a.resind = up.unpack_int()
+    a.atomnumber = up.unpack_int()
+
+    return a
+
+cdef void do_atoms(XDRUnpacker up,
+                   TpxHeader header,
+                   vector[Atom]& atoms,
+                   vector[int]& atomnames,
+                   vector[int]& type_,
+                   vector[int]& typeB,
+                   vector[int]& resnames):
+    cdef int i
+    cdef int nr, nres
+    cdef Atom a
+
+    nr = up.unpack_int()  # number of atoms in a particular molecule
+    nres = up.unpack_int()  # number of residues in a particular molecule
+
+    atoms.reserve(nr)
+    for i in range(nr):
+        a = do_atom(up)
+        atoms.push_back(a)
+
+    # grab names, these are separate...
+    atomnames.reserve(nr)
+    for i in range(nr):
+        atomnames.push_back(up.unpack_int())
+
+    # also separate arrays of atom type and typeB
+    type_.reserve(nr)
+    for i in range(nr):
+        type_.push_back(up.unpack_int())
+    typeB.reserve(nr)
+    for i in range(nr):
+        typeB.push_back(up.unpack_int())
+
+    do_resinfo(up, header, nres, resnames)
+
+
+cdef void do_resinfo(XDRUnpacker up, TpxHeader header, int nres,
+                     vector[int]& resnames):
+    cdef int i
+
+    resnames.reserve(nres)
+
+    if header.file_version < 63:
+        for i in range(nres):
+            resnames.push_back(up.unpack_int())
+    else:
+        for i in range(nres):
+            resnames.push_back(up.unpack_int())
+            up.unpack_int()
+            up.unpack_uchar()
+
+
+cdef struct Ilist:
+    int nr
+    InteractionKind ik
+    vector[int] iatoms
+
+
+cdef vector[Ilist] do_ilists(XDRUnpacker up,
+                             TpxHeader header):
+    cdef int i, j, k0, k1, n, l
+    cdef cbool bClear
+    cdef vector[int] nr
+    cdef vector[vector[int]] iatoms  # todo: could flatten this to vector[int] using nr array
+    cdef vector[int] iatom
+    cdef vector[Ilist] output
+
+    nr = vector[int]()
+    iatoms = vector[vector[int]]()
+
+    for j in range(interaction_functions.F_NRE):
+        bClear = False
+
+        for i in range(NFTUPD):
+            k0 = ftupd[i].fnvr
+            k1 = ftupd[i].ftype
+            if header.file_version < k0 and j == k1:
+                bClear = True
+
+        if bClear:
+            nr.push_back(0)
+            iatoms.push_back(vector[int]())
+        else:
+            # do_ilist
+            n = up.unpack_int()
+            nr.push_back(n)
+            iatom = vector[int]()
+            for l in range(n):
+                iatom.push_back(up.unpack_int())
+            iatoms.push_back(iatom)
+
+    # todo: could be constructing this inside the above loops
+    output = vector[Ilist]()
+    output.reserve(nr.size())
+    for i in range(nr.size()):
+        output.push_back(Ilist(
+            nr[i], dereference(interaction_types + i),  iatoms[i],
+        ))
+
+    return output
+
+
+cdef void do_block(XDRUnpacker up):
+    cdef int n
+
+    n = up.unpack_int()  # for cgs: charge groups
+    up.skip_int32(n + 1)
+
+
+cdef void do_blocka(XDRUnpacker up):
+    cdef int n1, n2
+
+    n1 = up.unpack_int()  # No. of atoms with excls
+    n2 = up.unpack_int()  # total times fo appearance of atoms for excls
+    up.skip_int32(n1 + 1)
+    up.skip_int32(n2)
+
+
+cdef struct MolType:
+    int name_idx
+    vector[Atom] atoms
+    vector[int] atom_indices
+    vector[int] types
+    vector[int] typeBs
+    vector[int] resname_indices
+    vector[Ilist] ilists
+
+
+cdef MolType do_moltype(XDRUnpacker up,
+                        TpxHeader header):
+    cdef vector[Atom] atoms
+    cdef vector[int] atomnames, type_, typeB, resnames
+    cdef vector[Ilist] ilists
+    cdef int molname
+
+    molname = up.unpack_int()  # actually an int referencing the name elsewhere
+
+    atoms = vector[Atom]()
+    atomnames = vector[int]()
+    type_ = vector[int]()
+    typeB = vector[int]()
+    resnames = vector[int]()
+    do_atoms(up, header,
+             atoms, atomnames, type_, typeB, resnames)
+
+    ilists = do_ilists(up, header)
+
+    do_block(up)
+    do_blocka(up)
+
+    return MolType(
+        molname,
+        atoms,
+        atomnames,
+        type_,
+        typeB,
+        resnames,
+        ilists
+    )
+
+
+cdef struct MolBlock:
+    int type_
+    int nmol
+    int natoms
+
+
+cdef MolBlock do_molblock(XDRUnpacker up,
+                          TpxHeader header):
+    cdef int type_, nmol, natoms
+    cdef int i, nposresA, nposresB
+
+    type_ = up.unpack_int()
+    nmol = up.unpack_int()
+    natoms = up.unpack_int()
+    # for A then B, the number of posres coords and the coords
+    # skip past these sections
+    nposresA = up.unpack_int()
+    up.skip_real(nposresA)
+    nposresB = up.unpack_int()
+    up.skip_real(nposresB)
+
+    return MolBlock(type_, nmol, natoms)
+
+
+cdef struct MTop:
+    int system_name
+    vector[stdstring] symtab
+
+
+cpdef MTop do_mtop(XDRUnpacker up,
+                  TpxHeader header):
     cdef vector[stdstring] symtab
+    cdef int i, nmoltype, nmolblock
+    cdef MTop mtop = MTop()
+    cdef MolType mt
+    cdef MolBlock mb
 
-    symtab = do_symtab(up)
+    mtop.symtab = do_symtab(up)
 
-    up.skip_int32(1)  # system_name symstr call
+    mtop.system_name = up.unpack_int()
 
     do_ffparams(up, header)
 
-    print('after ff_params at: ', up.get_position())
+    # print('after ff_params at: ', up.get_position())
 
-    return symtab
+    nmoltype = up.unpack_int()
+    for i in range(nmoltype):
+        mt = do_moltype(up, header)
+        # print(f'after mol {i} at pos {up.get_position()}')
+
+    nmolblock = up.unpack_int()
+    for i in range(nmolblock):
+        mb = do_molblock(up, header)
+        # print(f'after molblock {i} at pos {up.get_position()}')
+
+    return mtop
 
 
 cdef Box extract_box_info(XDRUnpacker up):
@@ -720,6 +949,7 @@ cdef Box extract_box_info(XDRUnpacker up):
 def parse(bytes data):
     cdef XDRUnpacker up
     cdef TpxHeader header
+    cdef MTop mtop
     cdef Box box
     cdef int i
 
@@ -737,7 +967,7 @@ def parse(bytes data):
         up.skip_real(1)  # relevant to Berendsen tcoupl_lambda
 
     if header.bTop:
-        do_mtop(up, header)
+        mtop = do_mtop(up, header)
 
     return header, box
 
