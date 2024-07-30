@@ -658,7 +658,6 @@ cdef void do_ffparams(XDRUnpacker up, TpxHeader header):
     cdef int i, j
     cdef int k0, k1
     cdef int atnr, ntypes
-    cdef t_ftupd *ftupd_ptr
     cdef double reppow, fudgeQQ
     cdef vector[int] functype = vector[int]()
 
@@ -676,8 +675,8 @@ cdef void do_ffparams(XDRUnpacker up, TpxHeader header):
 
     for i in range(ntypes):
         for j in range(NFTUPD):
-            k0 = (ftupd + j).fnvr
-            k1 = (ftupd + j).ftype
+            k0 = ftupd[j].fnvr
+            k1 = ftupd[j].ftype
 
             if header.file_version < k0 and functype[i] >= k1:
                 functype[i] += 1
