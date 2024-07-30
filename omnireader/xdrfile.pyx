@@ -399,6 +399,12 @@ cdef class XDRUnpacker:
     cdef skip_double(self, int n):
         self.skip(n * 8)
 
+    cdef skip_ushort(self, int n):
+        if self.is_2020:
+            self.skip(n * 2)
+        else:
+            self.skip(n * 4)
+
 
 cdef class TpxHeader:
     cdef readonly stdstring version_string
