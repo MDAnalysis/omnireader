@@ -897,6 +897,8 @@ cdef MolBlock do_molblock(XDRUnpacker up,
 cdef struct MTop:
     int system_name
     vector[stdstring] symtab
+    vector[MolType] moltypes
+    vector[MolBlock] molblocks
 
 
 cpdef MTop do_mtop(XDRUnpacker up,
@@ -904,8 +906,6 @@ cpdef MTop do_mtop(XDRUnpacker up,
     cdef vector[stdstring] symtab
     cdef int i, nmoltype, nmolblock
     cdef MTop mtop = MTop()
-    cdef MolType mt
-    cdef MolBlock mb
 
     mtop.symtab = do_symtab(up)
 
@@ -917,12 +917,12 @@ cpdef MTop do_mtop(XDRUnpacker up,
 
     nmoltype = up.unpack_int()
     for i in range(nmoltype):
-        mt = do_moltype(up, header)
+        mtop.moltypes.emplace_back(do_moltype(up, header))
         # print(f'after mol {i} at pos {up.get_position()}')
 
     nmolblock = up.unpack_int()
     for i in range(nmolblock):
-        mb = do_molblock(up, header)
+        mtop.molblocks.emplace_back(do_molblock(up, header))
         # print(f'after molblock {i} at pos {up.get_position()}')
 
     return mtop
@@ -969,9 +969,10 @@ def parse(bytes data):
     if header.bTop:
         mtop = do_mtop(up, header)
 
-    return header, box
+    return header, mtop, box
 
-def allowed_version(int i):
+
+def is_allowed_version(int i):
     cdef int ret
     ret = SUPPORTED_VERSIONS.count(i)
 
