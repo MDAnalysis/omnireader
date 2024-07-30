@@ -125,6 +125,13 @@ cdef extern from "tpr_settings.h":
         F_DVDL_TEMPERATURE
         F_NRE
 
+    cdef struct InteractionKind:
+        stdstring name
+        stdstring description
+        int natoms
+
+    InteractionKind *interaction_types
+    int N_INTERACTION_TYPES
 
 cdef class XDRUnpacker:
     cdef XDRThing converter

@@ -2,6 +2,7 @@
 #define OMNIREADER_TPR_SETTINGS
 
 #include <set>
+#include <string>
 
 /*
  * Gromacs reminds you:
@@ -229,6 +230,110 @@ static const t_ftupd ftupd[] = {
         {tpxv_VSite2FD, F_VSITE2FD},
 };
 #define NFTUPD asize(ftupd)
+
+typedef struct InteractionKind {
+    std::string name;
+    std::string description;
+    int natoms;
+} t_InteractionKind;
+
+static const InteractionKind interaction_types[] = {
+    {"BONDS", "Bond", 2},
+    {"G96BONDS", "G96Bond", 2},
+    {"MORSE", "Morse", 2},
+    {"CUBICBONDS", "Cubic Bonds", 2},
+    {"CONNBONDS", "Connect Bonds", 2},
+    {"HARMONIC", "Harmonic Pot.", 2},
+    {"FENEBONDS", "FENE Bonds", 2},
+    {"TABBONDS", "Tab. Bonds", 2},
+    {"TABBONDSNC", "Tab. Bonds NC", 2},
+    {"RESTRAINTPOT", "Restraint Pot.", 2},
+    {"ANGLES", "Angle", 3},
+    {"G96ANGLES", "G96Angle", 3},
+    {"RESTRANGLES", "Restricted Angles", 3},
+    {"LINEAR_ANGLES", "Lin. Angle", 3},
+    {"CROSS_BOND_BOND", "Bond-Cross", 3},
+    {"CROSS_BOND_ANGLE", "BA-Cross", 3},
+    {"UREY_BRADLEY", "U-B", 3},
+    {"QANGLES", "Quartic Angles", 3},
+    {"TABANGLES", "Tab. Angles", 3},
+    {"PDIHS", "Proper Dih.", 4},
+    {"RBDIHS", "Ryckaert-Bell.", 4},
+    {"RESTRDIHS", "Restricted Dih.", 4},
+    {"CBTDIHS", "CBT Dih.", 4},
+    {"FOURDIHS", "Fourier Dih.", 4},
+    {"IDIHS", "Improper Dih.", 4},
+    {"PIDIHS", "Improper Dih.", 4},
+    {"TABDIHS", "Tab. Dih.", 4},
+    {"CMAP", "CMAP Dih.", 5},
+    {"GB12", "GB 1-2 Pol.", 2},
+    {"GB13", "GB 1-3 Pol.", 2},
+    {"GB14", "GB 1-4 Pol.", 2},
+    {"GBPOL", "GB Polarization", 0},
+    {"NPSOLVATION", "Nonpolar Sol.", 0},
+    {"LJ14", "LJ-14", 2},
+    {"COUL14", "Coulomb-14", 0},
+    {"LJC14_Q", "LJC-14 q", 2},
+    {"LJC_NB", "LJC Pairs NB", 2},
+    {"LJ_SR", "LJ (SR)", 2},
+    {"BHAM", "Buck.ham (SR)", 2},
+    {"LJ_LR", "LJ (LR)", 0},
+    {"BHAM_LR", "Buck.ham (LR)", 0},
+    {"DISPCORR", "Disper. corr.", 0},
+    {"COUL_SR", "Coulomb (SR)", 0},
+    {"COUL_LR", "Coulomb (LR)", 0},
+    {"RF_EXCL", "RF excl.", 0},
+    {"COUL_RECIP", "Coul. recip.", 0},
+    {"LJ_RECIP", "LJ recip.", 0},
+    {"DPD", "DPD", 0},
+    {"POLARIZATION", "Polarization", 2},
+    {"WATERPOL", "Water Pol.", 5},
+    {"THOLE", "Thole Pol.", 4},
+    {"ANHARM_POL", "Anharm. Pol.", 2},
+    {"POSRES", "Position Rest.", 1},
+    {"FBPOSRES", "Flat-bottom posres", 1},
+    {"DISRES", "Dis. Rest.", 2},
+    {"DISRESVIOL", "D.R.Viol. (nm)", 0},
+    {"ORIRES", "Orient. Rest.", 2},
+    {"ORDEV", "Ori. R. RMSD", 0},
+    {"ANGRES", "Angle Rest.", 4},
+    {"ANGRESZ", "Angle Rest. Z", 2},
+    {"DIHRES", "Dih. Rest.", 4},
+    {"DIHRESVIOL", "Dih. Rest. Viol.", 0},
+    {"CONSTR", "Constraint", 2},
+    {"CONSTRNC", "Constr. No Conn.", 2},
+    {"SETTLE", "Settle", 3},
+    {"VSITE1", "Virtual site 1", 2},
+    {"VSITE2", "Virtual site 2", 3},
+    {"VSITE2FD", "Virtual site 2fd", 3},
+    {"VSITE3", "Virtual site 3", 4},
+    {"VSITE3FD", "Virtual site 3fd", 4},
+    {"VSITE3FAD", "Virtual site 3fad", 4},
+    {"VSITE3OUT", "Virtual site 3out", 4},
+    {"VSITE4FD", "Virtual site 4fd", 5},
+    {"VSITE4FDN", "Virtual site 4fdn", 5},
+    {"VSITEN", "Virtual site N", 2},
+    {"COM_PULL", "COM Pull En.", 0},
+    {"DENSITYFIT", "Density fitting", 0},
+    {"EQM", "Quantum En.", 0},
+    {"EPOT", "Potential", 0},
+    {"EKIN", "Kinetic En.", 0},
+    {"ETOT", "Total Energy", 0},
+    {"ECONS", "Conserved En.", 0},
+    {"TEMP", "Temperature", 0},
+    {"VTEMP", "Vir. Temp. (not used)", 0},
+    {"PDISPCORR", "Pres. DC", 0},
+    {"PRES", "Pressure", 0},
+    {"DH/DL_CON", "dH/dl constr.", 0},
+    {"DV/DL", "dVremain/dl", 0},
+    {"DK/DL", "dEkin/dl", 0},
+    {"DVC/DL", "dVcoul/dl", 0},
+    {"DVV/DL", "dVvdw/dl", 0},
+    {"DVB/DL", "dVbonded/dl", 0},
+    {"DVR/DL", "dVrestraint/dl", 0},
+    {"DVT/DL", "dVtemperature/dl", 0}
+};
+#define N_INTERACTION_TYPES asize(interaction_types)
 
 /*
 # Some constants
