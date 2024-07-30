@@ -719,15 +719,13 @@ cdef void do_atoms(XDRUnpacker up,
                    vector[int]& resnames):
     cdef int i
     cdef int nr, nres
-    cdef Atom a
 
     nr = up.unpack_int()  # number of atoms in a particular molecule
     nres = up.unpack_int()  # number of residues in a particular molecule
 
     atoms.reserve(nr)
     for i in range(nr):
-        a = do_atom(up)
-        atoms.push_back(a)
+        atoms.push_back(do_atom(up))
 
     # grab names, these are separate...
     atomnames.reserve(nr)
@@ -917,12 +915,12 @@ cpdef MTop do_mtop(XDRUnpacker up,
 
     nmoltype = up.unpack_int()
     for i in range(nmoltype):
-        mtop.moltypes.emplace_back(do_moltype(up, header))
+        mtop.moltypes.push_back(do_moltype(up, header))
         # print(f'after mol {i} at pos {up.get_position()}')
 
     nmolblock = up.unpack_int()
     for i in range(nmolblock):
-        mtop.molblocks.emplace_back(do_molblock(up, header))
+        mtop.molblocks.push_back(do_molblock(up, header))
         # print(f'after molblock {i} at pos {up.get_position()}')
 
     return mtop
