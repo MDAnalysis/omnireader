@@ -21,10 +21,11 @@ cdef extern from "omnireader.h":
 
 cdef extern from "tpr_settings.h":
     cset[int] SUPPORTED_VERSIONS
-    cppclass t_ftupd:
+
+    struct ftupdate:
         int fnvr
         int ftype
-    t_ftupd* ftupd
+    ftupdate *ftupd
     int NFTUPD
 
     enum interaction_functions:
