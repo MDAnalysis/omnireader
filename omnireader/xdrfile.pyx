@@ -1,6 +1,28 @@
 cimport cython
-from cython.operator cimport dereference
+from MDAnalysis.topology.base import squash_by
+from MDAnalysis.core.topology import Topology
+from MDAnalysis.core.topologyattrs import (
+    Atomids,
+    Atomnames,
+    Atomtypes,
+    Masses,
+    Charges,
+    Elements,
+    Resids,
+    Resnames,
+    Moltypes,
+    Molnums,
+    Segids,
+    ChainIDs,
+    Bonds,
+    Angles,
+    Dihedrals,
+    Impropers,
+)
 
+import numpy as np
+
+from cython.operator cimport dereference
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from libcpp.string cimport string as stdstring
@@ -828,7 +850,7 @@ cdef void do_blocka(XDRUnpacker up):
 cdef struct MolType:
     int name_idx
     vector[Atom] atoms
-    vector[int] atom_indices
+    vector[int] atomnames
     vector[int] types
     vector[int] typeBs
     vector[int] resname_indices
@@ -945,6 +967,7 @@ cdef Box extract_box_info(XDRUnpacker up):
 
 
 def parse(bytes data):
+    """Create a MDA Topology from tpr file"""
     cdef XDRUnpacker up
     cdef TpxHeader header
     cdef MTop mtop
@@ -966,8 +989,12 @@ def parse(bytes data):
 
     if header.bTop:
         mtop = do_mtop(up, header)
+    else:
+        raise ValueError
 
-    return header, mtop, box
+    topology = mtop_to_topology(mtop)
+
+    return topology
 
 
 def is_allowed_version(int i):
@@ -975,3 +1002,133 @@ def is_allowed_version(int i):
     ret = SUPPORTED_VERSIONS.count(i)
 
     return ret
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def mtop_to_topology(MTop mtop):
+    cdef int i, j, k
+    cdef int atomidx, molnum, atom_start_ndx, res_start_ndx
+    cdef int nmol, natoms, moltype_idx, resind
+    cdef str molname
+    cdef MolType *moltype
+    cdef Atom *atom
+
+    # calculate the number of atoms we are expecting so we can allocate arrays
+    natoms = 0
+    for i in range(mtop.molblocks.size()):
+        nmol = mtop.molblocks[i].nmol
+        moltype_idx = mtop.molblocks[i].type_
+        natoms += mtop.moltypes[i].atoms.size() * nmol
+
+    atomids = np.empty(natoms, dtype=np.int32)
+    segids = np.empty(natoms, dtype=object)
+    chainIDs = np.empty(natoms, dtype=object)
+    resids = np.empty(natoms, dtype=np.int32)
+    resnames = np.empty(natoms, dtype=object)
+    atomnames = np.empty(natoms, dtype=object)
+    atomtypes = np.empty(natoms, dtype=object)
+    moltypes = np.empty(natoms, dtype=object)
+    molnums = np.empty(natoms, dtype=np.int32)
+    charges = np.empty(natoms, dtype=np.float32)
+    masses = np.empty(natoms, dtype=np.float32)
+    elements = np.empty(natoms, dtype=object)
+
+    atomidx = 0
+    molnum = 0
+    atom_start_ndx = 0
+    res_start_ndx = 0
+    # loop over all molblocks in tpr
+    for i in range(mtop.molblocks.size()):
+        moltype_idx = mtop.molblocks[i].type_
+        moltype = & mtop.moltypes[moltype_idx]
+        # grab the name of this mol
+        molname = mtop.symtab[moltype.name_idx].decode('utf-8')
+        segid = f'seg_{i}_{molname}'
+        chainID = molname[14:] if molname.startswith('Protein_chain_') else molname
+
+        # loop over the repeats of this given moltype
+        for j in range(mtop.molblocks[i].nmol):
+            # loop over the atoms in this moltype
+            for k in range(moltype.atoms.size()):
+                atom = & moltype.atoms[k]
+                atomids[atomidx] = atomidx  # todo: atomkind.id + atom_start_ndx
+                segids[atomidx] = segid
+                chainIDs[atomidx] = chainID
+                resind = atom.resind
+                resids[atomidx] = resind + res_start_ndx
+                resnames[atomidx] = mtop.symtab[moltype.resname_indices[resind]].decode('utf-8')
+                atomnames[atomidx] = mtop.symtab[moltype.atomnames[k]].decode('utf-8')
+                atomtypes[atomidx] = mtop.symtab[moltype.types[k]].decode('utf-8')
+                moltypes[atomidx] = molname
+                molnums[atomidx] = molnum
+                charges[atomidx] = atom.charge
+                masses[atomidx] = atom.mass
+                elements[atomidx] = atom.atomnumber
+
+                atomidx += 1
+
+            # todo: bonds etc here
+
+            atom_start_ndx += moltype.atoms.size()
+            res_start_ndx += moltype.resname_indices.size()
+            molnum += 1
+
+    atomids = Atomids(np.array(atomids, dtype=np.int32))
+    atomnames = Atomnames(np.array(atomnames, dtype=object))
+    atomtypes = Atomtypes(np.array(atomtypes, dtype=object))
+    charges = Charges(np.array(charges, dtype=np.float32))
+    masses = Masses(np.array(masses, dtype=np.float32))
+
+    moltypes = np.array(moltypes, dtype=object)
+    molnums = np.array(molnums, dtype=np.int32)
+    segids = np.array(segids, dtype=object)
+    chainIDs = np.array(chainIDs, dtype=object)
+    resids = np.array(resids, dtype=np.int32)
+    # if tpr_resid_from_one:
+    # resids += 1
+
+    resnames = np.array(resnames, dtype=object)
+    (residx, new_resids,
+     (new_resnames,
+      new_moltypes,
+      new_molnums,
+      perres_segids
+      )
+     ) = squash_by(resids,
+                   resnames,
+                   moltypes,
+                   molnums,
+                   segids)
+    residueids = Resids(new_resids)
+    residuenames = Resnames(new_resnames)
+    residue_moltypes = Moltypes(new_moltypes)
+    residue_molnums = Molnums(new_molnums)
+
+    segidx, perseg_segids = squash_by(perres_segids)[:2]
+    segids = Segids(perseg_segids)
+    chainIDs = ChainIDs(chainIDs)
+
+    top = Topology(
+        len(atomids),
+        len(new_resids),
+        len(perseg_segids),
+        attrs=[
+            atomids,
+            atomnames,
+            atomtypes,
+            charges,
+            # elements,  # TODO: Check this
+            masses,
+            residueids,
+            residuenames,
+            residue_moltypes,
+            residue_molnums,
+            segids,
+            chainIDs,
+        ],
+        atom_resindex=residx,
+        residue_segindex=segidx,
+    )
+
+    return top
