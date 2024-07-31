@@ -147,12 +147,6 @@ cdef extern from "tpr_settings.h":
         F_DVDL_TEMPERATURE
         F_NRE
 
-    cdef struct InteractionKind:
-        stdstring name
-        stdstring description
-        int natoms
-
-    InteractionKind *interaction_types
     int N_INTERACTION_TYPES
 
 cdef class XDRUnpacker:
@@ -783,21 +777,19 @@ cdef void do_resinfo(XDRUnpacker up, TpxHeader header, int nres,
 
 cdef struct Ilist:
     int nr
-    InteractionKind ik
     vector[int] iatoms
 
 
 cdef vector[Ilist] do_ilists(XDRUnpacker up,
                              TpxHeader header):
-    cdef int i, j, k0, k1, n, l
+    cdef int i, j, k0, k1, l
     cdef cbool bClear
-    cdef vector[int] nr
-    cdef vector[vector[int]] iatoms  # todo: could flatten this to vector[int] using nr array
+    cdef int nr
     cdef vector[int] iatom
     cdef vector[Ilist] output
 
-    nr = vector[int]()
-    iatoms = vector[vector[int]]()
+    output = vector[Ilist]()
+    output.reserve(interaction_functions.F_NRE)
 
     for j in range(interaction_functions.F_NRE):
         bClear = False
@@ -808,25 +800,16 @@ cdef vector[Ilist] do_ilists(XDRUnpacker up,
             if header.file_version < k0 and j == k1:
                 bClear = True
 
+        iatom = vector[int]()
         if bClear:
-            nr.push_back(0)
-            iatoms.push_back(vector[int]())
+            nr = 0
         else:
             # do_ilist
-            n = up.unpack_int()
-            nr.push_back(n)
-            iatom = vector[int]()
-            for l in range(n):
+            nr = up.unpack_int()
+            for l in range(nr):
                 iatom.push_back(up.unpack_int())
-            iatoms.push_back(iatom)
 
-    # todo: could be constructing this inside the above loops
-    output = vector[Ilist]()
-    output.reserve(nr.size())
-    for i in range(nr.size()):
-        output.push_back(Ilist(
-            nr[i], dereference(interaction_types + i),  iatoms[i],
-        ))
+        output.push_back(Ilist(nr, iatom))
 
     return output
 

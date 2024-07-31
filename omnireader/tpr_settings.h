@@ -231,11 +231,45 @@ static const t_ftupd ftupd[] = {
 };
 #define NFTUPD asize(ftupd)
 
+
+enum BondedType {
+  unused=0,
+  bonds,
+  settle,
+  angles,
+  dihedrals,
+  impropers,
+};
+
 typedef struct InteractionKind {
     std::string name;
     std::string description;
     int natoms;
 } t_InteractionKind;
+
+// This tags interaction_types with how they are converted into MDA format
+// it matches the interaction_types array
+static const BondedType interaction_roles[] = {
+        bonds,bonds, bonds, bonds,bonds,  // BONDS, G96BONDS, MORSE, CUBICBONDS, CONNBONDS
+        bonds,bonds,bonds, bonds, bonds,  // HARMONIC, FENEBONDS, TABBONDS, TABBONDSNC, RESTRAINTPOT
+        angles, angles, angles, unused, angles,  // ANGLES, G96ANGLES, RESTRANGLES, x, CROSS_BOND_BOND
+        angles, angles, angles, angles, dihedrals,  // CROSS_BOND_ANGLE, UREY_BRADLEY, QANGLES, TABANGLES, PDIHS
+        dihedrals, dihedrals, dihedrals, dihedrals, impropers,  // RBDIHS, RESTRDIHS, CBTDIHS, FOURDIHS, IDIHS
+        impropers, dihedrals, unused, unused, unused,  // PIDIHS, TABDIHS, x, x, x
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, bonds, bonds, settle,  // x, x, CONSTR, CONSTRNC, SETTLE
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused, unused,
+        unused, unused, unused, unused
+};
 
 static const InteractionKind interaction_types[] = {
     {"BONDS", "Bond", 2},
