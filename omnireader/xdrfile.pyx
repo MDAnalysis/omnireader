@@ -1048,6 +1048,9 @@ def mtop_to_topology(MTop mtop):
                 nimpropers += nmol * mtop.moltypes[moltype_idx].ilists[j].nr / 5 * 4
 
     bonds = np.empty(nbonds, dtype=np.int32)
+    angles = np.empty(nangles, dtype=np.int32)
+    dihedrals = np.empty(ndihedrals, dtype=np.int32)
+    impropers = np.empty(nimpropers, dtype=np.int32)
 
     atomids = np.empty(natoms, dtype=np.int32)
     segids = np.empty(natoms, dtype=object)
@@ -1142,11 +1145,65 @@ def mtop_to_topology(MTop mtop):
                                 ilist_counter = 0
                 elif interaction_roles[k] == BondedType.angles:
                     # angles come in 4s, type,i,j,k
-                    pass
+                    for l in dereference(ilist).iatoms:
+                        if ilist_counter == 0:
+                            # type
+                            ilist_counter += 1
+                        elif ilist_counter == 1:  # i
+                            angles[angleidx] = l + atom_start_ndx
+                            angleidx += 1
+                            ilist_counter += 1
+                        elif ilist_counter == 2:  # j
+                            angles[angleidx] = l + atom_start_ndx
+                            angleidx += 1
+                            ilist_counter += 1
+                        else:  # ilist_counter == 3  # k
+                            angles[angleidx] = l + atom_start_ndx
+                            angleidx += 1
+                            ilist_counter = 0
                 elif interaction_roles[k] == BondedType.dihedrals:
-                    pass
+                    # both dihedrals and impropers come in 5s
+                    for l in dereference(ilist).iatoms:
+                        if ilist_counter == 0:
+                            # type
+                            ilist_counter += 1
+                        elif ilist_counter == 1:  # i
+                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedralidx += 1
+                            ilist_counter += 1
+                        elif ilist_counter == 2:  # j
+                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedralidx += 1
+                            ilist_counter += 1
+                        elif ilist_counter == 3:  # k
+                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedralidx += 1
+                            ilist_counter += 1
+                        else:  # ilist_counter == 4  # l
+                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedralidx += 1
+                            ilist_counter = 0
                 elif interaction_roles[k] == BondedType.impropers:
-                    pass
+                    for l in dereference(ilist).iatoms:
+                        if ilist_counter == 0:
+                            # type
+                            ilist_counter += 1
+                        elif ilist_counter == 1:  # i
+                            impropers[improperidx] = l + atom_start_ndx
+                            improperidx += 1
+                            ilist_counter += 1
+                        elif ilist_counter == 2:  # j
+                            impropers[improperidx] = l + atom_start_ndx
+                            improperidx += 1
+                            ilist_counter += 1
+                        elif ilist_counter == 3:  # k
+                            impropers[improperidx] = l + atom_start_ndx
+                            improperidx += 1
+                            ilist_counter += 1
+                        else:  # ilist_counter == 4  # l
+                            impropers[improperidx] = l + atom_start_ndx
+                            improperidx += 1
+                            ilist_counter = 0
 
             atom_start_ndx += moltype.atoms.size()
             res_start_ndx += moltype.resname_indices.size()
@@ -1209,4 +1266,4 @@ def mtop_to_topology(MTop mtop):
         residue_segindex=segidx,
     )
 
-    return top
+    return top, bonds
