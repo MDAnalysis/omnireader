@@ -1000,20 +1000,54 @@ def is_allowed_version(int i):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.cdivision(True)  # for division on bond number lengths
 def mtop_to_topology(MTop mtop):
-    cdef int i, j, k
+    cdef int i, j, k, l
     cdef int atomidx, molnum, atom_start_ndx, res_start_ndx
+    cdef int nbonds = 0, nangles = 0, ndihedrals = 0, nimpropers = 0
+    cdef int bondidx = 0, angleidx = 0, dihedralidx = 0, improperidx = 0
+    cdef int ilist_counter, settle_base  # for unpacking ilists
     cdef int nmol, natoms, moltype_idx, resind
     cdef str molname
     cdef MolType *moltype
     cdef Atom *atom
+    cdef Ilist *ilist
+    cdef vector[int] bonds  # this gets filled with all bonds, then cast to np
+    cdef vector[int] angles
+    cdef vector[int] dihedrals
+    cdef vector[int] impropers
 
     # calculate the number of atoms we are expecting so we can allocate arrays
     natoms = 0
+    # nbonds - not actually nbonds, but how many indices to hold to record bonds, i.e. nbonds * 2
     for i in range(mtop.molblocks.size()):
         nmol = mtop.molblocks[i].nmol
         moltype_idx = mtop.molblocks[i].type_
         natoms += mtop.moltypes[i].atoms.size() * nmol
+
+        for j in range(mtop.moltypes[moltype_idx].ilists.size()):
+            # for each interactionlist
+            # accumulate how many values are beind held
+            if interaction_roles[j] == BondedType.bonds:
+                nbonds += nmol * mtop.moltypes[moltype_idx].ilists[j].nr / 3 * 2
+            elif interaction_roles[j] == BondedType.settle:
+                # new settle, 3 indices giving 2 settle records
+                k = mtop.moltypes[moltype_idx].ilists[j].nr
+                if k == 2:  # todo: not sure this is right, old settle style
+                    nbonds += nmol * 2
+                else:
+                    # k/4 is how many entries there are, type,i,j,k
+                    # ij and ik are the bonds
+
+                    nbonds += nmol * k #  is actually nmol * k / 4 * 2 * 2
+            elif interaction_roles[j] == BondedType.angles:
+                nangles += nmol * mtop.moltypes[moltype_idx].ilists[j].nr / 4 * 3
+            elif interaction_roles[j] == BondedType.dihedrals:
+                ndihedrals += nmol * mtop.moltypes[moltype_idx].ilists[j].nr / 5 * 4
+            elif interaction_roles[j] == BondedType.impropers:
+                nimpropers += nmol * mtop.moltypes[moltype_idx].ilists[j].nr / 5 * 4
+
+    bonds = np.empty(nbonds, dtype=np.int32)
 
     atomids = np.empty(natoms, dtype=np.int32)
     segids = np.empty(natoms, dtype=object)
@@ -1062,7 +1096,57 @@ def mtop_to_topology(MTop mtop):
 
                 atomidx += 1
 
-            # todo: bonds etc here
+            # process ilists to form bonds
+            for k in range(moltype.ilists.size()):
+                ilist = & moltype.ilists[k]
+                ilist_counter = 0
+                if interaction_roles[k] == BondedType.bonds:
+                    # bonds come in 3s, type,i,j -> ij
+                    # discard type index
+                    for l in dereference(ilist).iatoms:
+                        if ilist_counter == 0:
+                            # type
+                            ilist_counter += 1
+                        elif ilist_counter == 1:
+                            # i
+                            bonds[bondidx] = l + atom_start_ndx
+                            bondidx += 1
+                            ilist_counter += 1
+                        else:  # ilist_counter == 2
+                            # j
+                            bonds[bondidx] = l + atom_start_ndx
+                            bondidx += 1
+                            ilist_counter = 0
+                elif interaction_roles[k] == BondedType.settle:
+                    # settle comes in two variants
+                    # other variant is type,i,j,k unpacking to ij and ik
+                    if ilist.nr == 2:
+                        # TODO: legacy settle doesn't seem right
+                        raise NotImplementedError
+                    else:
+                        for l in dereference(ilist).iatoms:
+                            if ilist_counter == 0:
+                                ilist_counter += 1
+                            elif ilist_counter == 1:
+                                settle_base = l
+                                ilist_counter += 1
+                            elif ilist_counter == 2:
+                                bonds[bondidx] = settle_base + atom_start_ndx
+                                bonds[bondidx+1] = l + atom_start_ndx
+                                bondidx += 2
+                                ilist_counter += 1
+                            else:  # ilist_counter == 3
+                                bonds[bondidx] = settle_base + atom_start_ndx
+                                bonds[bondidx+1] = l + atom_start_ndx
+                                bondidx += 2
+                                ilist_counter = 0
+                elif interaction_roles[k] == BondedType.angles:
+                    # angles come in 4s, type,i,j,k
+                    pass
+                elif interaction_roles[k] == BondedType.dihedrals:
+                    pass
+                elif interaction_roles[k] == BondedType.impropers:
+                    pass
 
             atom_start_ndx += moltype.atoms.size()
             res_start_ndx += moltype.resname_indices.size()
