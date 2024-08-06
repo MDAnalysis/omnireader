@@ -149,6 +149,17 @@ cdef extern from "tpr_settings.h":
 
     int N_INTERACTION_TYPES
 
+    enum BondedType:
+        unused
+        bonds
+        settle
+        angles
+        dihedrals
+        impropers
+
+    BondedType* interaction_roles
+
+
 cdef class XDRUnpacker:
     cdef XDRThing converter
     # todo: make this a stdstring?  essentially a smart pointer for bytes
