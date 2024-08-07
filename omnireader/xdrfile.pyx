@@ -1211,18 +1211,13 @@ def mtop_to_topology(MTop mtop):
             res_start_ndx += moltype.resname_indices.size()
             molnum += 1
 
-    atomids = Atomids(np.array(atomids, dtype=np.int32))
-    atomnames = Atomnames(np.array(atomnames, dtype=object))
-    atomtypes = Atomtypes(np.array(atomtypes, dtype=object))
-    charges = Charges(np.array(charges, dtype=np.float32))
-    masses = Masses(np.array(masses, dtype=np.float32))
+    atomids = Atomids(atomids)
+    atomnames = Atomnames(atomnames)
+    atomtypes = Atomtypes(atomtypes)
+    charges = Charges(charges)
+    masses = Masses(masses)
 
-    moltypes = np.array(moltypes, dtype=object)
-    molnums = np.array(molnums, dtype=np.int32)
-    segids = np.array(segids, dtype=object)
-    chainIDs = np.array(chainIDs, dtype=object)
-    resids = np.array(resids, dtype=np.int32)
-    # if tpr_resid_from_one:
+    # todo: if tpr_resid_from_one:
     # resids += 1
 
     # Bonds/Angles/Torsions
@@ -1233,7 +1228,6 @@ def mtop_to_topology(MTop mtop):
         Impropers([tuple(row) for row in impropers.reshape(-1, 4)]),  # todo: check ordering on impropers
     ]
 
-    resnames = np.array(resnames, dtype=object)
     (residx, new_resids,
      (new_resnames,
       new_moltypes,
