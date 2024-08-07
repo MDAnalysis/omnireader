@@ -1012,10 +1012,8 @@ def mtop_to_topology(MTop mtop):
     cdef MolType *moltype
     cdef Atom *atom
     cdef Ilist *ilist
-    cdef vector[int] bonds  # this gets filled with all bonds, then cast to np
-    cdef vector[int] angles
-    cdef vector[int] dihedrals
-    cdef vector[int] impropers
+    cdef object bonds, angles, dihedrals, impropers
+    cdef int[::1] bonds_view, angles_view, dihedrals_view, impropers_view
 
     # calculate the number of atoms we are expecting so we can allocate arrays
     natoms = 0
@@ -1051,6 +1049,10 @@ def mtop_to_topology(MTop mtop):
     angles = np.empty(nangles, dtype=np.int32)
     dihedrals = np.empty(ndihedrals, dtype=np.int32)
     impropers = np.empty(nimpropers, dtype=np.int32)
+    bonds_view = bonds
+    angles_view = angles
+    dihedrals_view = dihedrals
+    impropers_view = impropers
 
     atomids = np.empty(natoms, dtype=np.int32)
     segids = np.empty(natoms, dtype=object)
@@ -1134,13 +1136,13 @@ def mtop_to_topology(MTop mtop):
                                 settle_base = l
                                 ilist_counter += 1
                             elif ilist_counter == 2:
-                                bonds[bondidx] = settle_base + atom_start_ndx
-                                bonds[bondidx+1] = l + atom_start_ndx
+                                bonds_view[bondidx] = settle_base + atom_start_ndx
+                                bonds_view[bondidx+1] = l + atom_start_ndx
                                 bondidx += 2
                                 ilist_counter += 1
                             else:  # ilist_counter == 3
-                                bonds[bondidx] = settle_base + atom_start_ndx
-                                bonds[bondidx+1] = l + atom_start_ndx
+                                bonds_view[bondidx] = settle_base + atom_start_ndx
+                                bonds_view[bondidx+1] = l + atom_start_ndx
                                 bondidx += 2
                                 ilist_counter = 0
                 elif interaction_roles[k] == BondedType.angles:
@@ -1150,15 +1152,15 @@ def mtop_to_topology(MTop mtop):
                             # type
                             ilist_counter += 1
                         elif ilist_counter == 1:  # i
-                            angles[angleidx] = l + atom_start_ndx
+                            angles_view[angleidx] = l + atom_start_ndx
                             angleidx += 1
                             ilist_counter += 1
                         elif ilist_counter == 2:  # j
-                            angles[angleidx] = l + atom_start_ndx
+                            angles_view[angleidx] = l + atom_start_ndx
                             angleidx += 1
                             ilist_counter += 1
                         else:  # ilist_counter == 3  # k
-                            angles[angleidx] = l + atom_start_ndx
+                            angles_view[angleidx] = l + atom_start_ndx
                             angleidx += 1
                             ilist_counter = 0
                 elif interaction_roles[k] == BondedType.dihedrals:
@@ -1168,19 +1170,19 @@ def mtop_to_topology(MTop mtop):
                             # type
                             ilist_counter += 1
                         elif ilist_counter == 1:  # i
-                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedrals_view[dihedralidx] = l + atom_start_ndx
                             dihedralidx += 1
                             ilist_counter += 1
                         elif ilist_counter == 2:  # j
-                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedrals_view[dihedralidx] = l + atom_start_ndx
                             dihedralidx += 1
                             ilist_counter += 1
                         elif ilist_counter == 3:  # k
-                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedrals_view[dihedralidx] = l + atom_start_ndx
                             dihedralidx += 1
                             ilist_counter += 1
                         else:  # ilist_counter == 4  # l
-                            dihedrals[dihedralidx] = l + atom_start_ndx
+                            dihedrals_view[dihedralidx] = l + atom_start_ndx
                             dihedralidx += 1
                             ilist_counter = 0
                 elif interaction_roles[k] == BondedType.impropers:
@@ -1189,19 +1191,19 @@ def mtop_to_topology(MTop mtop):
                             # type
                             ilist_counter += 1
                         elif ilist_counter == 1:  # i
-                            impropers[improperidx] = l + atom_start_ndx
+                            impropers_view[improperidx] = l + atom_start_ndx
                             improperidx += 1
                             ilist_counter += 1
                         elif ilist_counter == 2:  # j
-                            impropers[improperidx] = l + atom_start_ndx
+                            impropers_view[improperidx] = l + atom_start_ndx
                             improperidx += 1
                             ilist_counter += 1
                         elif ilist_counter == 3:  # k
-                            impropers[improperidx] = l + atom_start_ndx
+                            impropers_view[improperidx] = l + atom_start_ndx
                             improperidx += 1
                             ilist_counter += 1
                         else:  # ilist_counter == 4  # l
-                            impropers[improperidx] = l + atom_start_ndx
+                            impropers_view[improperidx] = l + atom_start_ndx
                             improperidx += 1
                             ilist_counter = 0
 
@@ -1222,6 +1224,14 @@ def mtop_to_topology(MTop mtop):
     resids = np.array(resids, dtype=np.int32)
     # if tpr_resid_from_one:
     # resids += 1
+
+    # Bonds/Angles/Torsions
+    connection_attrs = [
+        Bonds([tuple(row) for row in bonds.reshape(-1, 2)]),
+        Angles([tuple(row) for row in angles.reshape(-1, 3)]),
+        Dihedrals([tuple(row) for row in dihedrals.reshape(-1, 4)]),  # todo: check ordering on dihedrals
+        Impropers([tuple(row) for row in impropers.reshape(-1, 4)]),  # todo: check ordering on impropers
+    ]
 
     resnames = np.array(resnames, dtype=object)
     (residx, new_resids,
@@ -1261,7 +1271,7 @@ def mtop_to_topology(MTop mtop):
             residue_molnums,
             segids,
             chainIDs,
-        ],
+        ] + connection_attrs,
         atom_resindex=residx,
         residue_segindex=segidx,
     )
