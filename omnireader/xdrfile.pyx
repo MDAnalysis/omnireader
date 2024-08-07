@@ -167,8 +167,8 @@ cdef class XDRUnpacker:
     cdef char *buffer
     cdef char *ptr
     cdef int length
-    cdef readonly cbool is_2020
-    cdef readonly cbool double_prec
+    cdef cbool is_2020
+    cdef cbool double_prec
 
     def __cinit__(self):
         self.buffer = NULL
@@ -401,32 +401,32 @@ cdef class XDRUnpacker:
         else:
             return self.unpack_int()
 
-    cdef skip(self, size_t amount):
+    cdef void skip(self, int amount):
         """skip a number of bytes ahead
         
         saves doing byte swaps on stuff we're not going to look at
         """
         self.ptr += amount
 
-    cpdef skip_real(self, int n):
+    cdef void skip_real(self, int n):
         """skip n reals"""
         self.skip(n * 4)
         if self.double_prec:
             self.skip(n * 4)
 
-    cdef skip_int32(self, int n):
+    cdef void skip_int32(self, int n):
         self.skip(n * 4)
 
-    cdef skip_int64(self, int n):
+    cdef void skip_int64(self, int n):
         self.skip(n * 8)
 
-    cdef skip_float(self, int n):
+    cdef void skip_float(self, int n):
         self.skip(n * 4)
 
-    cdef skip_double(self, int n):
+    cdef void skip_double(self, int n):
         self.skip(n * 8)
 
-    cdef skip_ushort(self, int n):
+    cdef void skip_ushort(self, int n):
         if self.is_2020:
             self.skip(n * 2)
         else:
@@ -452,10 +452,10 @@ cdef class TpxHeader:
     cdef readonly unsigned long long size_of_tpr_body
 
 
-cdef class Box:
-    cdef readonly double box[9]
-    cdef readonly double box_rel[9]
-    cdef readonly double box_v[9]
+cdef struct Box:
+    double box[9]
+    double box_rel[9]
+    double box_v[9]
 
 
 cpdef TpxHeader read_tpx_header(XDRUnpacker u):
@@ -1114,12 +1114,12 @@ def mtop_to_topology(MTop mtop):
                             ilist_counter += 1
                         elif ilist_counter == 1:
                             # i
-                            bonds[bondidx] = l + atom_start_ndx
+                            bonds_view[bondidx] = l + atom_start_ndx
                             bondidx += 1
                             ilist_counter += 1
                         else:  # ilist_counter == 2
                             # j
-                            bonds[bondidx] = l + atom_start_ndx
+                            bonds_view[bondidx] = l + atom_start_ndx
                             bondidx += 1
                             ilist_counter = 0
                 elif interaction_roles[k] == BondedType.settle:
