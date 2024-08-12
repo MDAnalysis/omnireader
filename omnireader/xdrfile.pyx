@@ -519,7 +519,7 @@ cpdef TpxHeader read_tpx_header(XDRUnpacker u):
         header.size_of_tpr_body = u.unpack_int64()
 
     # finally update the unpacker if we're doing a gromacs 2020 tpr file
-    if header.file_version >= 119 and header.file_generation <= 27:
+    if header.file_version >= 119 and header.file_generation >= 27:
         u.set_is_2020(1)
 
     return header
