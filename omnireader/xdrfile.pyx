@@ -930,6 +930,52 @@ cdef MolBlock do_molblock(XDRUnpacker up,
     return MolBlock(type_, nmol, natoms)
 
 
+cdef void skip_atom_types(XDRUnpacker up,
+                          TpxHeader header):
+    # skip through do_atomtypes
+    cdef int ntypes
+
+    ntypes = up.unpack_int()
+    if header.file_version < 113:  # remove implicit solvation
+        # skip nr real values
+        up.skip_real(ntypes)
+
+    ntypes = up.unpack_int()
+    up.skip_int32(ntypes)  # atomnumbers?
+
+    if 60 <= header.file_version < 113:  # >=
+        up.skip_real(ntypes)
+        up.skip_real(ntypes)
+
+
+cdef void skip_cmaps(XDRUnpacker up):
+    # skips through do_cmap section
+    cdef int ngrid, grid_spacing, nelem
+
+    ngrid = up.unpack_int()
+    grid_spacing = up.unpack_int()
+
+    nelem = grid_spacing * grid_spacing
+    up.skip_real(ngrid * nelem * 4)
+
+
+cdef void skip_groups(XDRUnpacker up):
+    # skips through do_groups
+    cdef int i, ngroups
+
+    # this is do_grps
+    for i in range(10):
+        ngroups = up.unpack_int()
+        up.skip_int32(ngroups)
+
+    ngroups = up.unpack_int()  # number of group names
+    up.skip_int32(ngroups)  # skip group names
+
+    for i in range(10):
+        ngroups = up.unpack_int()
+        up.skip_bool(ngroups)
+
+
 cdef struct MTop:
     int system_name
     vector[stdstring] symtab
@@ -940,8 +986,10 @@ cdef struct MTop:
 cpdef MTop do_mtop(XDRUnpacker up,
                   TpxHeader header):
     cdef vector[stdstring] symtab
-    cdef int i, nmoltype, nmolblock
+    cdef int i, nmoltype, nmolblock, natoms
+    cdef long long nexcl
     cdef MTop mtop = MTop()
+    cdef cbool has_intermolecular_bonds
 
     mtop.symtab = do_symtab(up)
 
@@ -961,10 +1009,38 @@ cpdef MTop do_mtop(XDRUnpacker up,
         mtop.molblocks.push_back(do_molblock(up, header))
         # print(f'after molblock {i} at pos {up.get_position()}')
 
+    # this next number should be natoms, so do a quick sanity check
+    natoms = up.unpack_int()
+
+    if not natoms == header.natoms:
+        raise ValueError("Post molblock natoms sanity check failed,. something is awry")
+
+    if header.file_version >= 103:  # intermolecular bonds added
+        has_intermolecular_bonds = up.unpack_bool()
+        if has_intermolecular_bonds:
+            raise NotImplementedError
+
+    if header.file_version < 128:  # remove atom types
+        skip_atom_types(up, header)
+
+    if header.file_version >= 65:  # pre96version65
+        skip_cmaps(up)
+
+    skip_groups(up)
+
+    if header.file_version >= 120:  # store nonbonded interaction excl
+        nexcl = up.unpack_int64()
+        up.skip_int32(nexcl)
+
     return mtop
 
 
-cdef Box extract_box_info(XDRUnpacker up):
+cpdef read_coordinates(XDRUnpacker up,
+                      TpxHeader header):
+    pass
+
+
+cpdef Box extract_box_info(XDRUnpacker up):
     cdef Box b = Box()
     cdef int i
     cdef double x
