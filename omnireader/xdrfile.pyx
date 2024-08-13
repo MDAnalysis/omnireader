@@ -960,7 +960,7 @@ cdef Box extract_box_info(XDRUnpacker up):
     return b
 
 
-def parse(bytes data):
+def parse(bytes data, skip_top=False):
     """Create a MDA Topology from tpr file"""
     cdef XDRUnpacker up
     cdef TpxHeader header
@@ -985,6 +985,9 @@ def parse(bytes data):
         mtop = do_mtop(up, header)
     else:
         raise ValueError
+
+    if skip_top:
+        return mtop
 
     topology = mtop_to_topology(mtop)
 
