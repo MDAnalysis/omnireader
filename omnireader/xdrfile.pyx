@@ -224,6 +224,8 @@ cdef class XDRUnpacker:
            - post 2020 uses 2 bytes not 4
          - unpack_uchar
            - post 2020 uses 1 byte not 4 per char
+         - unpack_bool
+           - post 20202 uses 1 byte not 4 per bool
         """
         self.is_2020 = i
 
@@ -299,8 +301,22 @@ cdef class XDRUnpacker:
 
     unpack_enum = unpack_int
 
-    def unpack_bool(self) -> bool:
-        pass
+    cpdef cbool unpack_bool(self):
+        # this also varies with version
+        cdef int a
+        cdef char b
+        cdef size_t ret
+
+        if self.is_2020:
+            b = self.ptr[0]
+            self.ptr += 1
+
+            return b != 0
+        else:
+            ret = self.converter.get_int32(self.ptr, a)
+            self.ptr += ret
+
+            return a != 0
 
     def unpack_uhyper(self):
         pass
@@ -429,6 +445,12 @@ cdef class XDRUnpacker:
     cdef void skip_ushort(self, int n):
         if self.is_2020:
             self.skip(n * 2)
+        else:
+            self.skip(n * 4)
+
+    cdef void skip_bool(self, int n):
+        if self.is_2020:
+            self.skip(n)
         else:
             self.skip(n * 4)
 
