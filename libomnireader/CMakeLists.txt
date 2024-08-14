@@ -21,9 +21,7 @@ set_target_properties(omnireader
         PUBLIC_HEADER "include/xdrthing.h"
 )
 
-add_subdirectory(rpc_xdr)
-
-install(TARGETS omnireader rpc_xdr
+install(TARGETS omnireader
         DESTINATION omnireader
         PUBLIC_HEADER DESTINATION include
         )
