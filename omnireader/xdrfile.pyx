@@ -1046,7 +1046,10 @@ cpdef read_coordinates(XDRUnpacker up,
     pass
 
 
-cpdef Box extract_box_info(XDRUnpacker up):
+
+cpdef Box extract_box_info(XDRUnpacker up,
+                           TpxHeader header):
+    # follow code in do_tpx_state_first
     cdef Box b = Box()
     cdef int i
     cdef double x
@@ -1054,12 +1057,18 @@ cpdef Box extract_box_info(XDRUnpacker up):
     for i in range(9):
         x = up.unpack_real()
         b.box[i] = x
-    for i in range(9):
-        x = up.unpack_real()
-        b.box_rel[i] = x
+
+    if header.file_version >= 51:  # pre96version51
+        for i in range(9):
+            x = up.unpack_real()
+            b.box_rel[i] = x
+
     for i in range(9):
         x = up.unpack_real()
         b.box_v[i] = x
+
+    if header.file_version < 56:  # pre96version56
+        up.skip_real(9)
 
     return b
 
@@ -1077,16 +1086,13 @@ def parse(bytes data, skip_top=False):
     cdef XDRUnpacker up
     cdef TpxHeader header
     cdef MTop mtop
-    cdef Box box
     cdef int i
 
     up = XDRUnpacker(data)
 
     header = read_tpx_header(up)
     if header.bBox:
-        box = extract_box_info(up)
-    else:
-        box = Box()
+        extract_box_info(up, header)
 
     skip_berendsen_section(up, header)
 
