@@ -1018,7 +1018,8 @@ cpdef MTop do_mtop(XDRUnpacker up,
     if header.file_version >= 103:  # intermolecular bonds added
         has_intermolecular_bonds = up.unpack_bool()
         if has_intermolecular_bonds:
-            raise NotImplementedError
+            # do another ilists, but discard the result
+            do_ilists(up, header)
 
     if header.file_version < 128:  # remove atom types
         skip_atom_types(up, header)
