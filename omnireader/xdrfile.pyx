@@ -1041,10 +1041,40 @@ cdef void skip_post_mtop_section(XDRUnpacker up,
         up.skip_int32(nexcl)
 
 
-cpdef read_coordinates(XDRUnpacker up,
-                      TpxHeader header):
-    pass
+cpdef read_coordinates(bytes data):
+    """Returns positions and velocities (if present) from TPR data"""
+    cdef XDRUnpacker up
+    cdef TpxHeader header
+    cdef MTop mtop
+    cdef Box box
+    cdef int i
 
+    up = XDRUnpacker(data)
+
+    header = read_tpx_header(up)
+    if header.bBox:
+        box = extract_box_info(up, header)
+    else:
+        box = Box()
+
+    skip_berendsen_section(up, header)
+
+    if header.bTop:
+        do_mtop(up, header)
+
+    skip_post_mtop_section(up, header)
+
+    if header.bX:
+        positions = extract_positions(up, header)
+    else:
+        positions = None
+
+    if header.bV:
+        velocities = extract_positions(up, header)
+    else:
+        velocities = None
+
+    return positions, velocities
 
 
 cpdef Box extract_box_info(XDRUnpacker up,
@@ -1389,3 +1419,28 @@ def mtop_to_topology(MTop mtop):
     )
 
     return top, bonds
+
+
+cdef object extract_positions(XDRUnpacker up,
+                              TpxHeader header):
+    # not sure on precision so just create both views and handle later
+    cdef int i, natoms
+    cdef float[::1] singleprec_view
+    cdef double[::1] doubleprec_view
+
+    natoms = header.natoms
+
+    if header.precision == 4:
+        array = np.empty(natoms * 3, dtype=np.float32)
+        singleprec_view = array
+
+        for i in range(natoms * 3):
+            singleprec_view[i] = up.unpack_float()
+    else:
+        array = np.empty(natoms * 3, dtype=np.float64)
+        doubleprec_view = array
+
+        for i in range(natoms * 3):
+            doubleprec_view[i] = up.unpack_double()
+
+    return array.reshape(-1, 3)
