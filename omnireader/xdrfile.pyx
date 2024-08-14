@@ -984,7 +984,7 @@ cdef struct MTop:
 
 
 cpdef MTop do_mtop(XDRUnpacker up,
-                  TpxHeader header):
+                   TpxHeader header):
     cdef vector[stdstring] symtab
     cdef int i, nmoltype, nmolblock, natoms
     cdef long long nexcl
@@ -1015,6 +1015,13 @@ cpdef MTop do_mtop(XDRUnpacker up,
     if not natoms == header.natoms:
         raise ValueError("Post molblock natoms sanity check failed,. something is awry")
 
+
+    return mtop
+
+
+cdef void skip_post_mtop_section(XDRUnpacker up,
+                                 TpxHeader header):
+    # skips through section after do_mtop and before coordinates
     if header.file_version >= 103:  # intermolecular bonds added
         has_intermolecular_bonds = up.unpack_bool()
         if has_intermolecular_bonds:
@@ -1032,8 +1039,6 @@ cpdef MTop do_mtop(XDRUnpacker up,
     if header.file_version >= 120:  # store nonbonded interaction excl
         nexcl = up.unpack_int64()
         up.skip_int32(nexcl)
-
-    return mtop
 
 
 cpdef read_coordinates(XDRUnpacker up,
