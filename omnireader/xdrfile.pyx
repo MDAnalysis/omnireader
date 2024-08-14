@@ -1042,11 +1042,9 @@ cdef void skip_post_mtop_section(XDRUnpacker up,
 
 
 cpdef read_coordinates(bytes data):
-    """Returns positions and velocities (if present) from TPR data"""
+    """Returns box, positions and velocities (if present) from TPR data"""
     cdef XDRUnpacker up
     cdef TpxHeader header
-    cdef MTop mtop
-    cdef Box box
     cdef int i
 
     up = XDRUnpacker(data)
@@ -1055,7 +1053,7 @@ cpdef read_coordinates(bytes data):
     if header.bBox:
         box = extract_box_info(up, header)
     else:
-        box = Box()
+        box = None
 
     skip_berendsen_section(up, header)
 
@@ -1074,7 +1072,7 @@ cpdef read_coordinates(bytes data):
     else:
         velocities = None
 
-    return positions, velocities
+    return box, positions, velocities
 
 
 cpdef Box extract_box_info(XDRUnpacker up,
@@ -1421,6 +1419,8 @@ def mtop_to_topology(MTop mtop):
     return top, bonds
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 cdef object extract_positions(XDRUnpacker up,
                               TpxHeader header):
     # not sure on precision so just create both views and handle later
