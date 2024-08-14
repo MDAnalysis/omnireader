@@ -1064,6 +1064,14 @@ cpdef Box extract_box_info(XDRUnpacker up):
     return b
 
 
+cdef void skip_berendsen_section(XDRUnpacker up,
+                                 TpxHeader header):
+    for i in range(header.ngtc):
+        if header.file_version < 69:
+            up.skip_real(1)
+        up.skip_real(1)  # relevant to Berendsen tcoupl_lambda
+
+
 def parse(bytes data, skip_top=False):
     """Create a MDA Topology from tpr file"""
     cdef XDRUnpacker up
@@ -1080,10 +1088,7 @@ def parse(bytes data, skip_top=False):
     else:
         box = Box()
 
-    for i in range(header.ngtc):
-        if header.file_version < 69:
-            up.skip_real(1)
-        up.skip_real(1)  # relevant to Berendsen tcoupl_lambda
+    skip_berendsen_section(up, header)
 
     if header.bTop:
         mtop = do_mtop(up, header)
