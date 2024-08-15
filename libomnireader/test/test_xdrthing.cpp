@@ -5,6 +5,19 @@
 #include <iostream>
 #include "omnireader.h"
 
+inline void byteswap(char *where, size_t len) {
+    char *i = where;
+    char *j = where + len - 1;
+
+    while (i < j) {
+        char a = *i;
+        char b = *j;
+
+        *i++ = b;
+        *j-- = a;
+    }
+}
+
 
 int main() {
     XDRThing x;
@@ -17,9 +30,13 @@ int main() {
     unsigned long long d = 1000;
 
     memcpy(buffer, &a, 4);
+    byteswap(buffer, 4);
     memcpy(buffer + 4, &b, 8);
+    byteswap(buffer + 4, 8);
     memcpy(buffer + 12, &c, 4);
+    byteswap(buffer + 12, 4);
     memcpy(buffer + 16, &d, 8);
+    byteswap(buffer + 16, 8);
 
     size_t amt1, amt2, amt3, amt4;
 
