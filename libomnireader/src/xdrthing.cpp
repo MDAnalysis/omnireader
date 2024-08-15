@@ -11,8 +11,8 @@ public:
     virtual size_t get_float(const char *src, float &output) const = 0;
     virtual size_t get_int32(const char *src, int &output) const = 0;
     virtual size_t get_uint32(const char *src, unsigned int &output) const = 0;
-    virtual size_t get_int64(const char *src, long long &output) const = 0;
-    virtual size_t get_uint64(const char *src, unsigned long long &output) const = 0;
+    virtual size_t get_int64(const char *src, int64_t &output) const = 0;
+    virtual size_t get_uint64(const char *src, uint64_t &output) const = 0;
 };
 
 class BEImpl : public XDRImpl {
@@ -40,10 +40,10 @@ class BEImpl : public XDRImpl {
     size_t get_uint32(const char *src, unsigned int &output) const final {
         return get_thing(src, output);
     }
-    size_t get_int64(const char *src, long long &output) const final {
+    size_t get_int64(const char *src, int64_t &output) const final {
         return get_thing(src, output);
     }
-    size_t get_uint64(const char *src, unsigned long long &output) const final {
+    size_t get_uint64(const char *src, uint64_t &output) const final {
         return get_thing(src, output);
     }
 };
@@ -76,10 +76,10 @@ class LEImpl : public XDRImpl {
     size_t get_uint32(const char *src, unsigned int &output) const final {
         return get_thing(src, output);
     }
-    size_t get_int64(const char *src, long long &output) const final {
+    size_t get_int64(const char *src, int64_t &output) const final {
         return get_thing(src, output);
     }
-    size_t get_uint64(const char *src, unsigned long long &output) const final {
+    size_t get_uint64(const char *src, uint64_t &output) const final {
         return get_thing(src, output);
     }
 };
@@ -115,9 +115,9 @@ size_t XDRThing::get_int32(const char *src, int &output) const {
 size_t XDRThing::get_uint32(const char *src, unsigned int &output) const {
     return _impl->get_uint32(src, output);
 }
-size_t XDRThing::get_int64(const char *src, long long &output) const {
+size_t XDRThing::get_int64(const char *src, int64_t &output) const {
     return _impl->get_int64(src, output);
 }
-size_t XDRThing::get_uint64(const char *src, unsigned long long &output) const {
+size_t XDRThing::get_uint64(const char *src, uint64_t &output) const {
     return _impl->get_uint64(src, output);
 }
