@@ -44,6 +44,7 @@ public:
     size_t get_uchar(unsigned char &output) {
         if (is_2020) {
             output = ptr[0];
+
             ptr += 1;
             return 1;
         } else {
@@ -51,7 +52,6 @@ public:
             get_int32(tmp);
             output = tmp;
 
-            ptr += 4;
             return 4;
         }
     }
@@ -61,13 +61,9 @@ public:
             get_uint16(tmp);
             output = tmp;
 
-            ptr += 2;
             return 2;
         } else {
-            get_uint32(output);
-
-            ptr += 4;
-            return 4;
+            return get_uint32(output);
         }
     }
     size_t get_real(double &output) {
@@ -134,7 +130,9 @@ public:
     bool is_big_endian() const;
     void set_stream(const char* new_src) { src = new_src; ptr = src; }
     void set_double_precision(bool toggle) { double_precision = toggle; };
+    bool get_double_precision() const { return double_precision; }
     void set_is_2020(bool toggle) { is_2020 = toggle; };
+    bool get_is_2020() const { return is_2020; };
 private:
     XDRImpl* _impl;
     const char *src;  // base of buffer
