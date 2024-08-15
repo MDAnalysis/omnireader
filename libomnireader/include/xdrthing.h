@@ -103,6 +103,34 @@ public:
         return out;
     }
 
+    // skips
+    void skip(size_t amount) {
+        ptr += amount;
+    }
+    void skip_real(size_t n) {
+        // skips n reals
+        if (double_precision) {
+            skip(n * 8);
+        } else {
+            skip(n * 4);
+        }
+    }
+    void skip_int(size_t n) { skip(n * 4); }
+    void skip_ushort(size_t n) {
+        if (is_2020) {
+            skip(n * 2);
+        } else {
+            skip( n * 4);
+        }
+    }
+    void skip_bool(size_t n) {
+        if (is_2020) {
+            skip(n);
+        } else {
+            skip(n * 4);
+        }
+    }
+
     bool is_big_endian() const;
     void set_stream(const char* new_src) { src = new_src; ptr = src; }
     void set_double_precision(bool toggle) { double_precision = toggle; };
