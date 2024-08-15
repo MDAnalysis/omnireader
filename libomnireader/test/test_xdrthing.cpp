@@ -26,12 +26,14 @@ int main() {
     float a2;
     double b2;
     int c2;
-    unsigned long long d2;
+    uint64_t d2;
 
-    amt1 = x.get_float(buffer, a2);
-    amt2 = x.get_double(buffer + 4, b2);
-    amt3 = x.get_int32(buffer + 12, c2);
-    amt4 = x.get_uint64(buffer + 16, d2);
+    x.set_stream(buffer);
+
+    amt1 = x.get_float(a2);
+    amt2 = x.get_double(b2);
+    amt3 = x.get_int32(c2);
+    amt4 = x.get_uint64(d2);
 
     std::cout << amt1 << " " << a2 << "\n";
     std::cout << amt2 << " " << b2 << "\n";

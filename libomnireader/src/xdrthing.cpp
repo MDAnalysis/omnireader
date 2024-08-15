@@ -85,7 +85,7 @@ class LEImpl : public XDRImpl {
 };
 
 
-XDRThing::XDRThing() {
+XDRThing::XDRThing() : double_precision(false), is_2020(false), src(nullptr), ptr(nullptr) {
     // figure out endianness
     const int i=1;
 
@@ -103,21 +103,33 @@ XDRThing::~XDRThing() {
 
 bool XDRThing::is_big_endian() const { return _impl->is_big_endian; }
 
-size_t XDRThing::get_float(const char *src, float &output) const {
-    return _impl->get_float(src, output);
+size_t XDRThing::get_float(float &output) {
+    size_t s = _impl->get_float(ptr, output);
+    ptr += s;
+    return s;
 }
-size_t XDRThing::get_double(const char *src, double &output) const {
-    return _impl->get_double(src, output);
+size_t XDRThing::get_double(double &output) {
+    size_t s = _impl->get_double(ptr, output);
+    ptr += s;
+    return s;
 }
-size_t XDRThing::get_int32(const char *src, int &output) const {
-    return _impl->get_int32(src, output);
+size_t XDRThing::get_int32(int &output) {
+    size_t s = _impl->get_int32(ptr, output);
+    ptr += s;
+    return s;
 }
-size_t XDRThing::get_uint32(const char *src, unsigned int &output) const {
-    return _impl->get_uint32(src, output);
+size_t XDRThing::get_uint32(unsigned int &output) {
+    size_t s = _impl->get_uint32(ptr, output);
+    ptr += s;
+    return s;
 }
-size_t XDRThing::get_int64(const char *src, int64_t &output) const {
-    return _impl->get_int64(src, output);
+size_t XDRThing::get_int64(int64_t &output) {
+    size_t s = _impl->get_int64(ptr, output);
+    ptr += s;
+    return s;
 }
-size_t XDRThing::get_uint64(const char *src, uint64_t &output) const {
-    return _impl->get_uint64(src, output);
+size_t XDRThing::get_uint64(uint64_t &output) {
+    size_t s = _impl->get_uint64(ptr, output);
+    ptr += s;
+    return s;
 }

@@ -18,15 +18,22 @@ public:
 
     ~XDRThing();
 
-    size_t get_float(const char* src, float &output) const;
-    size_t get_double(const char *src, double &output) const;
-    size_t get_int32(const char *src, int &output) const;
-    size_t get_uint32(const char *src, unsigned int &output) const;
-    size_t get_int64(const char *src, int64_t &output) const;
-    size_t get_uint64(const char *src, uint64_t &output) const;
+    size_t get_float(float &output);
+    size_t get_double(double &output);
+    size_t get_int32(int &output);
+    size_t get_uint32(unsigned int &output);
+    size_t get_int64(int64_t &output);
+    size_t get_uint64(uint64_t &output);
     bool is_big_endian() const;
+    void set_stream(const char* new_src) { src = new_src; ptr = src; }
+    void set_double_precision(bool toggle) { double_precision = toggle; };
+    void set_is_2020(bool toggle) { is_2020 = toggle; };
 private:
     XDRImpl* _impl;
+    const char *src;  // base of buffer
+    const char *ptr;  // current read head
+    bool double_precision;
+    bool is_2020;
 };
 
 #endif //OMNIREADER_XDRTHING_H
