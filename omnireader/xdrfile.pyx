@@ -27,6 +27,7 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from libcpp.string cimport string as stdstring
 from libcpp.vector cimport vector
+from libc.stdint cimport int64_t, uint64_t
 from libcpp cimport bool as cbool
 from libcpp.set cimport set as cset
 
@@ -34,12 +35,15 @@ from libcpp.set cimport set as cset
 cdef extern from "omnireader.h":
     cppclass XDRThing:
         cbool is_big_endian() const
-        size_t get_float(const char *src, float &output) const
-        size_t get_double(const char *src, double &output) const
-        size_t get_int32(const char *src, int &output) const
-        size_t get_uint32(const char *src, unsigned int &output) const
-        size_t get_int64(const char *src, long long &output) const
-        size_t get_uint64(const char *src, unsigned long long &output) const
+        void set_stream(const char* src)
+        void set_double_precision(cbool toggle)
+        void set_is_2020(cbool toggle)
+        size_t get_float(float &output)
+        size_t get_double(double &output)
+        size_t get_int32(int &output)
+        size_t get_uint32(unsigned int &output)
+        size_t get_int64(int64_t &output)
+        size_t get_uint64(uint64_t &output)
 
 cdef extern from "tpr_settings.h":
     cset[int] SUPPORTED_VERSIONS
@@ -196,6 +200,7 @@ cdef class XDRUnpacker:
         memcpy(self.buffer, data, size * sizeof(char))
 
         self.ptr = self.buffer
+        self.converter.set_stream(self.buffer)
 
     cpdef stdstring read(self, int n):
         return stdstring(self.ptr, n)
@@ -231,7 +236,7 @@ cdef class XDRUnpacker:
 
     cpdef void set_is_double(self, cbool is_double):
         """Toggles the behaviour of unpack_real"""
-        self.double_prec = is_double
+        self.converter.set_double_precision(is_double)
 
     cpdef double unpack_real(self):
         if self.double_prec:

@@ -9,6 +9,7 @@ public:
     bool is_big_endian;
     virtual size_t get_double(const char *src, double &output) const = 0;
     virtual size_t get_float(const char *src, float &output) const = 0;
+    virtual size_t get_uint16(const char *src, unsigned short &output) const = 0;
     virtual size_t get_int32(const char *src, int &output) const = 0;
     virtual size_t get_uint32(const char *src, unsigned int &output) const = 0;
     virtual size_t get_int64(const char *src, int64_t &output) const = 0;
@@ -32,6 +33,9 @@ class BEImpl : public XDRImpl {
         return get_thing(src, output);
     }
     size_t get_double(const char *src, double &output) const final {
+        return get_thing(src, output);
+    }
+    size_t get_uint16(const char *src, unsigned short &output) const final {
         return get_thing(src, output);
     }
     size_t get_int32(const char *src, int &output) const final {
@@ -68,6 +72,9 @@ class LEImpl : public XDRImpl {
         return get_thing(src, output);
     }
     size_t get_double(const char *src, double &output) const final {
+        return get_thing(src, output);
+    }
+    size_t get_uint16(const char *src, unsigned short &output) const final {
         return get_thing(src, output);
     }
     size_t get_int32(const char *src, int &output) const final {
@@ -110,6 +117,11 @@ size_t XDRThing::get_float(float &output) {
 }
 size_t XDRThing::get_double(double &output) {
     size_t s = _impl->get_double(ptr, output);
+    ptr += s;
+    return s;
+}
+size_t XDRThing::get_uint16(unsigned short &output) {
+    size_t s = _impl->get_uint16(ptr, output);
     ptr += s;
     return s;
 }
