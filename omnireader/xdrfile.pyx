@@ -209,7 +209,7 @@ cdef struct Box:
     double box_v[9]
 
 
-cdef TpxHeader read_tpx_header(XDRThing *u):
+cdef TpxHeader read_tpx_header(XDRThing& u):
     """Reads tpx header
     
     Also updates the XDRThing to follow flags in the header:
@@ -276,7 +276,7 @@ cdef TpxHeader read_tpx_header(XDRThing *u):
     return header
 
 
-cdef vector[stdstring] do_symtab(XDRThing *up):
+cdef vector[stdstring] do_symtab(XDRThing& up):
     cdef size_t i, symtab_nr
     cdef vector[stdstring] symtab
     cdef stdstring sym
@@ -289,7 +289,7 @@ cdef vector[stdstring] do_symtab(XDRThing *up):
 
     return symtab
 
-cdef void do_iparams(XDRThing *up,
+cdef void do_iparams(XDRThing& up,
                      TpxHeader header,
                      vector[int]& ftypes):
     """Skip past the various parameters
@@ -431,7 +431,7 @@ cdef void do_iparams(XDRThing *up,
             raise ValueError
 
 
-cdef void do_ffparams(XDRThing *up, TpxHeader header):
+cdef void do_ffparams(XDRThing& up, TpxHeader header):
     """Currently just skips..."""
     cdef int i, j, ftype
     cdef int k0, k1
@@ -474,7 +474,7 @@ cdef struct Atom:
     int atomnumber
 
 
-cdef inline Atom do_atom(XDRThing *up):
+cdef inline Atom do_atom(XDRThing& up):
     cdef Atom a = Atom()
 
     a.mass = up.get_real()
@@ -488,7 +488,7 @@ cdef inline Atom do_atom(XDRThing *up):
 
     return a
 
-cdef void do_atoms(XDRThing *up,
+cdef void do_atoms(XDRThing& up,
                    TpxHeader header,
                    vector[Atom]& atoms,
                    vector[int]& atomnames,
@@ -521,7 +521,7 @@ cdef void do_atoms(XDRThing *up,
     do_resinfo(up, header, nres, resnames)
 
 
-cdef void do_resinfo(XDRThing *up,
+cdef void do_resinfo(XDRThing& up,
                      TpxHeader header,
                      int nres,
                      vector[int]& resnames):
@@ -544,7 +544,7 @@ cdef struct Ilist:
     vector[int] iatoms
 
 
-cdef vector[Ilist] do_ilists(XDRThing *up,
+cdef vector[Ilist] do_ilists(XDRThing& up,
                              TpxHeader header):
     cdef int i, j, k0, k1, l
     cdef cbool bClear
@@ -578,14 +578,14 @@ cdef vector[Ilist] do_ilists(XDRThing *up,
     return output
 
 
-cdef void do_block(XDRThing *up):
+cdef void do_block(XDRThing& up):
     cdef int n
 
     n = up.get_int32()  # for cgs: charge groups
     up.skip_int(n + 1)
 
 
-cdef void do_blocka(XDRThing *up):
+cdef void do_blocka(XDRThing& up):
     cdef int n1, n2
 
     n1 = up.get_int32()  # No. of atoms with excls
@@ -604,7 +604,7 @@ cdef struct MolType:
     vector[Ilist] ilists
 
 
-cdef MolType do_moltype(XDRThing *up,
+cdef MolType do_moltype(XDRThing& up,
                         TpxHeader header):
     cdef vector[Atom] atoms
     cdef vector[int] atomnames, type_, typeB, resnames
@@ -643,7 +643,7 @@ cdef struct MolBlock:
     int natoms
 
 
-cdef MolBlock do_molblock(XDRThing *up,
+cdef MolBlock do_molblock(XDRThing& up,
                           TpxHeader header):
     cdef int type_, nmol, natoms
     cdef int i, nposresA, nposresB
@@ -661,7 +661,7 @@ cdef MolBlock do_molblock(XDRThing *up,
     return MolBlock(type_, nmol, natoms)
 
 
-cdef void skip_atom_types(XDRThing *up,
+cdef void skip_atom_types(XDRThing& up,
                           TpxHeader header):
     # skip through do_atomtypes
     cdef int ntypes
@@ -679,7 +679,7 @@ cdef void skip_atom_types(XDRThing *up,
         up.skip_real(ntypes)
 
 
-cdef void skip_cmaps(XDRThing *up):
+cdef void skip_cmaps(XDRThing& up):
     # skips through do_cmap section
     cdef int ngrid, grid_spacing, nelem
 
@@ -690,7 +690,7 @@ cdef void skip_cmaps(XDRThing *up):
     up.skip_real(ngrid * nelem * 4)
 
 
-cdef void skip_groups(XDRThing *up):
+cdef void skip_groups(XDRThing& up):
     # skips through do_groups
     cdef int i, ngroups
 
@@ -714,7 +714,7 @@ cdef struct MTop:
     vector[MolBlock] molblocks
 
 
-cdef MTop do_mtop(XDRThing *up,
+cdef MTop do_mtop(XDRThing& up,
                    TpxHeader header):
     cdef vector[stdstring] symtab
     cdef int i, nmoltype, nmolblock, natoms
@@ -744,7 +744,7 @@ cdef MTop do_mtop(XDRThing *up,
     return mtop
 
 
-cdef void skip_post_mtop_section(XDRThing *up,
+cdef void skip_post_mtop_section(XDRThing& up,
                                  TpxHeader header):
     # skips through section after do_mtop and before coordinates
     if header.file_version >= 103:  # intermolecular bonds added
@@ -768,44 +768,39 @@ cdef void skip_post_mtop_section(XDRThing *up,
 
 def read_coordinates(bytes data):
     """Returns box, positions and velocities (if present) from TPR data"""
-    cdef XDRThing *up
+    cdef XDRThing up
     cdef TpxHeader header
     cdef int i
 
-    up = new XDRThing()
+    up.set_stream(data)
 
-    try:
-        up.set_stream(data)
+    header = read_tpx_header(up)
+    if header.bBox:
+        box = extract_box_info(up, header)
+    else:
+        box = None
 
-        header = read_tpx_header(up)
-        if header.bBox:
-            box = extract_box_info(up, header)
-        else:
-            box = None
+    skip_berendsen_section(up, header)
 
-        skip_berendsen_section(up, header)
+    if header.bTop:
+        do_mtop(up, header)
 
-        if header.bTop:
-            do_mtop(up, header)
+    skip_post_mtop_section(up, header)
 
-        skip_post_mtop_section(up, header)
+    if header.bX:
+        positions = extract_positions(up, header)
+    else:
+        positions = None
 
-        if header.bX:
-            positions = extract_positions(up, header)
-        else:
-            positions = None
-
-        if header.bV:
-            velocities = extract_positions(up, header)
-        else:
-            velocities = None
-    finally:
-        del up
+    if header.bV:
+        velocities = extract_positions(up, header)
+    else:
+        velocities = None
 
     return box, positions, velocities
 
 
-cdef Box extract_box_info(XDRThing *up,
+cdef Box extract_box_info(XDRThing& up,
                            TpxHeader header):
     # follow code in do_tpx_state_first
     cdef Box b = Box()
@@ -827,7 +822,7 @@ cdef Box extract_box_info(XDRThing *up,
     return b
 
 
-cdef void skip_berendsen_section(XDRThing *up,
+cdef void skip_berendsen_section(XDRThing& up,
                                  TpxHeader header):
     for i in range(header.ngtc):
         if header.file_version < 69:
@@ -837,29 +832,24 @@ cdef void skip_berendsen_section(XDRThing *up,
 
 def parse(bytes data, skip_top=False):
     """Create a MDA Topology from tpr file"""
-    cdef XDRThing *up
+    cdef XDRThing up
     cdef TpxHeader header
     cdef MTop mtop
     cdef int i
 
-    up = new XDRThing()
+    up.set_stream(data)
 
-    try:
-        up.set_stream(data)
+    header = read_tpx_header(up)
 
-        header = read_tpx_header(up)
+    if header.bBox:
+        extract_box_info(up, header)
 
-        if header.bBox:
-            extract_box_info(up, header)
+    skip_berendsen_section(up, header)
 
-        skip_berendsen_section(up, header)
-
-        if header.bTop:
-            mtop = do_mtop(up, header)
-        else:
-            raise ValueError
-    finally:
-        del up
+    if header.bTop:
+        mtop = do_mtop(up, header)
+    else:
+        raise ValueError
 
     if skip_top:
         return mtop
@@ -1153,7 +1143,7 @@ def mtop_to_topology(MTop mtop):
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef object extract_positions(XDRThing *up,
+cdef object extract_positions(XDRThing& up,
                               TpxHeader header):
     # not sure on precision so just create both views and handle later
     cdef int i, natoms
