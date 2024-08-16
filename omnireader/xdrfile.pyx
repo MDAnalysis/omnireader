@@ -66,8 +66,6 @@ cdef extern from "omnireader.h":
         void skip_bool(size_t n)
 
 cdef extern from "tpr_settings.h":
-    cset[int] SUPPORTED_VERSIONS
-
     struct ftupdate:
         int fnvr
         int ftype
@@ -182,6 +180,10 @@ cdef extern from "tpr_settings.h":
         impropers
 
     BondedType* interaction_roles
+
+cdef extern from *:
+    """const std::set<int> SUPPORTED_VERSIONS = {58, 73, 83, 100, 103, 110, 112, 116, 119, 122, 127, 129, 133};"""
+    cset[int] SUPPORTED_VERSIONS
 
 
 cdef class TpxHeader:

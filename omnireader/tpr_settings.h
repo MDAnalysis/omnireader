@@ -12,8 +12,6 @@
  * Most of this lovingly stolen from gromacs source
  */
 
-const std::set<int> SUPPORTED_VERSIONS = {58, 73, 83, 100, 103, 110, 112, 116, 119, 122, 127, 129, 133};
-
 enum interaction_functions
 {
     F_BONDS,
