@@ -15,7 +15,8 @@ class XDRThing {
 
 public:
     XDRThing();
-
+    XDRThing(const XDRThing& me) { abort(); }
+    XDRThing& operator=(const XDRThing& me) { abort(); }
     ~XDRThing();
 
     // fundamental get operations defined in impl
