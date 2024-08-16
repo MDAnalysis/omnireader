@@ -33,22 +33,32 @@ from libcpp.set cimport set as cset
 
 
 cdef extern from "omnireader.h":
+    cppclass XDRImpl:
+        pass
+
     cppclass XDRThing:
+        XDRImpl *impl
+        const char *src
+        const char *ptr
+        cbool double_precision
+        cbool is_2020
+
+        XDRThing()
         cbool is_big_endian() const
         void set_stream(const char* src)
         void set_double_precision(cbool toggle)
         cbool get_double_precision()
         void set_is_2020(cbool toggle)
-        size_t get_bool(cbool &output)
-        size_t get_ushort(unsigned int &output)
-        size_t get_uchar(unsigned int &output)
-        size_t get_real(double &output)
-        size_t get_float(float &output)
-        size_t get_double(double &output)
-        size_t get_int32(int &output)
-        size_t get_uint32(unsigned int &output)
-        size_t get_int64(int64_t &output)
-        size_t get_uint64(uint64_t &output)
+        cbool get_bool()
+        unsigned int get_ushort()
+        unsigned int get_uchar()
+        double get_real()
+        float get_float()
+        double get_double()
+        int get_int32()
+        unsigned int get_uint32()
+        int64_t get_int64()
+        uint64_t get_uint64()
         stdstring do_string()
         void skip_real(size_t n)
         void skip_int(size_t n)
@@ -174,129 +184,6 @@ cdef extern from "tpr_settings.h":
     BondedType* interaction_roles
 
 
-cdef class XDRUnpacker:
-    cdef XDRThing converter
-    # todo: make this a stdstring?  essentially a smart pointer for bytes
-    #       ptr would then be a size_t onto buffer.c_str()
-    cdef char *buffer
-    cdef char *ptr
-    cdef int length
-
-    def __cinit__(self):
-        self.buffer = NULL
-        self.ptr = NULL
-        self.length = 0
-
-    def __init__(self, bytes data):
-        self._set_buffer(data, len(data))
-
-    def __dealloc__(self):
-        if self.buffer != NULL:
-            free(self.buffer)
-
-    cdef _set_buffer(self, const char* data, int size):
-        # first copy the data to be owned by this object
-        self.length = size
-        if self.buffer != NULL:
-            free(self.buffer)
-        self.buffer = <char*> malloc(size * sizeof(char))
-        if self.buffer is NULL:
-            raise ValueError("Failed to allocate buffer")
-        memcpy(self.buffer, data, size * sizeof(char))
-
-        self.ptr = self.buffer
-        self.converter.set_stream(self.buffer)
-
-    cpdef stdstring read(self, int n):
-        return stdstring(self.ptr, n)
-
-    cpdef void set_is_2020(self, cbool i):
-        """Toggle 2020 behaviour
-
-        This changes the working of:
-         - do_string
-           - pre 2020, two ints followed by fstring (see below)
-           - post 2020, one int64 followed by fstring (see below)
-         - unpack_fstring
-           - post 2020 no longer padded to 4 byte boundary
-         - unpack_ushort
-           - post 2020 uses 2 bytes not 4
-         - unpack_uchar
-           - post 2020 uses 1 byte not 4 per char
-         - unpack_bool
-           - post 20202 uses 1 byte not 4 per bool
-        """
-        self.converter.set_is_2020(i)
-
-    cpdef void set_is_double(self, cbool is_double):
-        """Toggles the behaviour of unpack_real"""
-        self.converter.set_double_precision(is_double)
-
-    cpdef double unpack_real(self):
-        cdef double ret
-        self.converter.get_real(ret)
-        return ret
-
-    cpdef stdstring do_string(self):
-        """This is different to unpack_string."""
-        return self.converter.do_string()
-
-    def get_buffer(self) -> bytes:
-        return b''
-
-    def done(self) -> bool:
-        return self.get_position() == self.length
-
-    cpdef int unpack_int(self):
-        cdef int i=0
-        self.converter.get_int32(i)
-        return i
-
-    cpdef long long unpack_int64(self):
-        cdef int64_t ret
-        self.converter.get_int64(ret)
-        return ret
-
-    cpdef cbool unpack_bool(self):
-        # this also varies with version
-        cdef cbool ret
-        self.converter.get_bool(ret)
-        return ret
-
-    cpdef float unpack_float(self):
-        cdef float ret
-        self.converter.get_float(ret)
-        return ret
-
-    cpdef double unpack_double(self):
-        cdef double ret
-        self.converter.get_double(ret)
-        return ret
-
-    cpdef char unpack_uchar(self):
-        cdef unsigned char i
-        self.converter.get_uchar(i)
-        return i
-
-    cpdef unsigned int unpack_ushort(self):
-        cdef unsigned int ret
-        self.converter.get_ushort(ret)
-        return ret
-
-    cdef void skip_real(self, int n):
-        """skip n reals"""
-        self.converter.skip_real(n)
-
-    cdef void skip_int32(self, int n):
-        self.converter.skip_int(n)
-
-    cdef void skip_ushort(self, int n):
-        self.converter.skip_ushort(n)
-
-    cdef void skip_bool(self, int n):
-        self.converter.skip_bool(n)
-
-
 cdef class TpxHeader:
     cdef readonly stdstring version_string
     cdef readonly int precision
@@ -313,7 +200,7 @@ cdef class TpxHeader:
     cdef readonly int bV
     cdef readonly int bF
     cdef readonly int bBox
-    cdef readonly unsigned long long size_of_tpr_body
+    cdef readonly uint64_t size_of_tpr_body
 
 
 cdef struct Box:
@@ -322,28 +209,28 @@ cdef struct Box:
     double box_v[9]
 
 
-cpdef TpxHeader read_tpx_header(XDRUnpacker u):
+cdef TpxHeader read_tpx_header(XDRThing *u):
     """Reads tpx header
     
-    Also updates the XDRUnpacker to follow flags in the header:
+    Also updates the XDRThing to follow flags in the header:
     - precision (toggles unpack_real behaviour)
     - is_2020
     """
     cdef TpxHeader header = TpxHeader()
 
     header.version_string = u.do_string()
-    header.precision = u.unpack_int()
+    header.precision = u.get_int32()
     if header.precision == 8:
-        u.set_is_double(True)
+        u.set_double_precision(1)
 
-    header.file_version = u.unpack_int()
+    header.file_version = u.get_int32()
 
     if 77 <= header.file_version <= 79:
-        u.unpack_int()
+        u.skip_int(1)
         file_tag = u.do_string()
 
     if header.file_version >= 26:
-        header.file_generation = u.unpack_int()
+        header.file_generation = u.get_int32()
     else:
         header.file_generation = 0
 
@@ -353,34 +240,34 @@ cpdef TpxHeader read_tpx_header(XDRUnpacker u):
         # setting.TPX_TAG_RELEASE
         header.file_tag = b"release"
 
-    header.natoms = u.unpack_int()
+    header.natoms = u.get_int32()
     if header.file_version >= 28:
-        header.ngtc = u.unpack_int()
+        header.ngtc = u.get_int32()
     else:
         header.ngtc = 0
 
     if header.file_version < 62:
-        u.unpack_int()  # idum
-        u.unpack_real()  # rdum
+        u.skip_int(1)  # idum
+        u.skip_real(1)  # rdum
 
     if header.file_version >= 79:
-        header.fep_state = u.unpack_int()
+        header.fep_state = u.get_int32()
     else:
         header.fep_state = 0
 
-    header.lamb = u.unpack_real()
+    header.lamb = u.get_real()
 
-    header.bIr = u.unpack_int()
-    header.bTop = u.unpack_int()
-    header.bX = u.unpack_int()
-    header.bV = u.unpack_int()
-    header.bF = u.unpack_int()
-    header.bBox = u.unpack_int()
+    header.bIr = u.get_int32()
+    header.bTop = u.get_int32()
+    header.bX = u.get_int32()
+    header.bV = u.get_int32()
+    header.bF = u.get_int32()
+    header.bBox = u.get_int32()
 
     header.size_of_tpr_body = 0
     # setting.tpxc_addSizeField
     if header.file_version >= 119 and header.file_generation >= 27:
-        header.size_of_tpr_body = u.unpack_int64()
+        header.size_of_tpr_body = u.get_int64()
 
     # finally update the unpacker if we're doing a gromacs 2020 tpr file
     if header.file_version >= 119 and header.file_generation >= 27:
@@ -389,11 +276,11 @@ cpdef TpxHeader read_tpx_header(XDRUnpacker u):
     return header
 
 
-cdef vector[stdstring] do_symtab(XDRUnpacker up):
+cdef vector[stdstring] do_symtab(XDRThing *up):
     cdef size_t i, symtab_nr
     cdef vector[stdstring] symtab
     cdef stdstring sym
-    symtab_nr = up.unpack_int()
+    symtab_nr = up.get_int32()
     symtab = vector[stdstring]()
     symtab.reserve(symtab_nr)
     for i in range(symtab_nr):
@@ -402,7 +289,7 @@ cdef vector[stdstring] do_symtab(XDRUnpacker up):
 
     return symtab
 
-cdef void do_iparams(XDRUnpacker up,
+cdef void do_iparams(XDRThing *up,
                      TpxHeader header,
                      vector[int]& ftypes):
     """Skip past the various parameters
@@ -439,7 +326,7 @@ cdef void do_iparams(XDRUnpacker up,
               j == interaction_functions.F_TABANGLES or
               j == interaction_functions.F_TABDIHS):
             up.skip_real(1)
-            up.skip_int32(1)
+            up.skip_int(1)
             up.skip_real(1)
         elif j == interaction_functions.F_CROSS_BOND_BONDS:
             up.skip_real(3)
@@ -484,18 +371,18 @@ cdef void do_iparams(XDRUnpacker up,
               j == interaction_functions.F_ANGRESZ or
               j == interaction_functions.F_PDIHS):
             up.skip_real(4)
-            up.skip_int32(1)
+            up.skip_int(1)
         elif  j == interaction_functions.F_RESTRDIHS:
             up.skip_real(2)
         elif j == interaction_functions.F_DISRES:
-            up.skip_int32(2)
+            up.skip_int(2)
             up.skip_real(4)
         elif j == interaction_functions.F_ORIRES:
-            up.skip_int32(3)
+            up.skip_int(3)
             up.skip_real(3)
         elif j == interaction_functions.F_DIHRES:
             if header.file_version < 72:
-                up.skip_int32(2)
+                up.skip_int(2)
             up.skip_real(3)
             if header.file_version >= 72:
                 up.skip_real(3)
@@ -503,7 +390,7 @@ cdef void do_iparams(XDRUnpacker up,
             # 4 x do_rvec
             up.skip_real(3 * 4)
         elif j == interaction_functions.F_FBPOSRES:
-            up.skip_int32(1)
+            up.skip_int(1)
             up.skip_real(3 + 2)  # do_rvec + 2
         elif j == interaction_functions.F_CBTDIHS:
             up.skip_real(6)  #  6 == NR_CBTDIHS
@@ -530,7 +417,7 @@ cdef void do_iparams(XDRUnpacker up,
               j == interaction_functions.F_VSITE4FDN):
             up.skip_real(3)
         elif j == interaction_functions.F_VSITEN:
-            up.skip_int32(1)
+            up.skip_int(1)
             up.skip_real(1)
         elif (j == interaction_functions.F_GB12 or
               j == interaction_functions.F_GB13 or
@@ -539,30 +426,30 @@ cdef void do_iparams(XDRUnpacker up,
                 up.skip_real(4)
             up.skip_real(5)
         elif j == interaction_functions.F_CMAP:
-            up.skip_int32(2)
+            up.skip_int(2)
         else:
             raise ValueError
 
 
-cdef void do_ffparams(XDRUnpacker up, TpxHeader header):
+cdef void do_ffparams(XDRThing *up, TpxHeader header):
     """Currently just skips..."""
-    cdef int i, j
+    cdef int i, j, ftype
     cdef int k0, k1
     cdef int atnr, ntypes
     cdef double reppow, fudgeQQ
     cdef vector[int] functype = vector[int]()
 
-    atnr = up.unpack_int()
-    ntypes = up.unpack_int()
+    atnr = up.get_int32()
+    ntypes = up.get_int32()
     functype.reserve(ntypes)
     for i in range(ntypes):  # ndo_int
-        functype.push_back(up.unpack_int())
+        functype.push_back(up.get_int32())
 
     if header.file_version >= 66:
-        reppow = up.unpack_double()
+        reppow = up.get_double()
     else:
         reppow = 12.0
-    fudgeQQ = up.unpack_real()
+    fudgeQQ = up.get_real()
 
     for i in range(ntypes):
         for j in range(NFTUPD):
@@ -587,21 +474,21 @@ cdef struct Atom:
     int atomnumber
 
 
-cdef inline Atom do_atom(XDRUnpacker up):
+cdef inline Atom do_atom(XDRThing *up):
     cdef Atom a = Atom()
 
-    a.mass = up.unpack_real()
-    a.charge = up.unpack_real()
-    up.skip_real(2)  # massB and chargeB
-    a.type_ = up.unpack_ushort()
+    a.mass = up.get_real()
+    a.charge = up.get_real()
+    up.skip_real(2)
+    a.type_ = up.get_ushort()
     up.skip_ushort(1)  # typeB
-    a.ptype = up.unpack_int()
-    a.resind = up.unpack_int()
-    a.atomnumber = up.unpack_int()
+    a.ptype = up.get_int32()
+    a.resind = up.get_int32()
+    a.atomnumber = up.get_int32()
 
     return a
 
-cdef void do_atoms(XDRUnpacker up,
+cdef void do_atoms(XDRThing *up,
                    TpxHeader header,
                    vector[Atom]& atoms,
                    vector[int]& atomnames,
@@ -611,8 +498,8 @@ cdef void do_atoms(XDRUnpacker up,
     cdef int i
     cdef int nr, nres
 
-    nr = up.unpack_int()  # number of atoms in a particular molecule
-    nres = up.unpack_int()  # number of residues in a particular molecule
+    nr = up.get_int32()  # number of atoms in a particular molecule
+    nres = up.get_int32()  # number of residues in a particular molecule
 
     atoms.reserve(nr)
     for i in range(nr):
@@ -621,20 +508,22 @@ cdef void do_atoms(XDRUnpacker up,
     # grab names, these are separate...
     atomnames.reserve(nr)
     for i in range(nr):
-        atomnames.push_back(up.unpack_int())
+        atomnames.push_back(up.get_int32())
 
     # also separate arrays of atom type and typeB
     type_.reserve(nr)
     for i in range(nr):
-        type_.push_back(up.unpack_int())
+        type_.push_back(up.get_int32())
     typeB.reserve(nr)
     for i in range(nr):
-        typeB.push_back(up.unpack_int())
+        typeB.push_back(up.get_int32())
 
     do_resinfo(up, header, nres, resnames)
 
 
-cdef void do_resinfo(XDRUnpacker up, TpxHeader header, int nres,
+cdef void do_resinfo(XDRThing *up,
+                     TpxHeader header,
+                     int nres,
                      vector[int]& resnames):
     cdef int i
 
@@ -642,12 +531,12 @@ cdef void do_resinfo(XDRUnpacker up, TpxHeader header, int nres,
 
     if header.file_version < 63:
         for i in range(nres):
-            resnames.push_back(up.unpack_int())
+            resnames.push_back(up.get_int32())
     else:
         for i in range(nres):
-            resnames.push_back(up.unpack_int())
-            up.unpack_int()
-            up.unpack_uchar()
+            resnames.push_back(up.get_int32())
+            up.get_int32()
+            up.get_uchar()
 
 
 cdef struct Ilist:
@@ -655,7 +544,7 @@ cdef struct Ilist:
     vector[int] iatoms
 
 
-cdef vector[Ilist] do_ilists(XDRUnpacker up,
+cdef vector[Ilist] do_ilists(XDRThing *up,
                              TpxHeader header):
     cdef int i, j, k0, k1, l
     cdef cbool bClear
@@ -680,29 +569,29 @@ cdef vector[Ilist] do_ilists(XDRUnpacker up,
             nr = 0
         else:
             # do_ilist
-            nr = up.unpack_int()
+            nr = up.get_int32()
             for l in range(nr):
-                iatom.push_back(up.unpack_int())
+                iatom.push_back(up.get_int32())
 
         output.push_back(Ilist(nr, iatom))
 
     return output
 
 
-cdef void do_block(XDRUnpacker up):
+cdef void do_block(XDRThing *up):
     cdef int n
 
-    n = up.unpack_int()  # for cgs: charge groups
-    up.skip_int32(n + 1)
+    n = up.get_int32()  # for cgs: charge groups
+    up.skip_int(n + 1)
 
 
-cdef void do_blocka(XDRUnpacker up):
+cdef void do_blocka(XDRThing *up):
     cdef int n1, n2
 
-    n1 = up.unpack_int()  # No. of atoms with excls
-    n2 = up.unpack_int()  # total times fo appearance of atoms for excls
-    up.skip_int32(n1 + 1)
-    up.skip_int32(n2)
+    n1 = up.get_int32()  # No. of atoms with excls
+    n2 = up.get_int32()  # total times fo appearance of atoms for excls
+    up.skip_int(n1 + 1)
+    up.skip_int(n2)
 
 
 cdef struct MolType:
@@ -715,14 +604,14 @@ cdef struct MolType:
     vector[Ilist] ilists
 
 
-cdef MolType do_moltype(XDRUnpacker up,
+cdef MolType do_moltype(XDRThing *up,
                         TpxHeader header):
     cdef vector[Atom] atoms
     cdef vector[int] atomnames, type_, typeB, resnames
     cdef vector[Ilist] ilists
     cdef int molname
 
-    molname = up.unpack_int()  # actually an int referencing the name elsewhere
+    molname = up.get_int32()  # actually an int referencing the name elsewhere
 
     atoms = vector[Atom]()
     atomnames = vector[int]()
@@ -754,67 +643,67 @@ cdef struct MolBlock:
     int natoms
 
 
-cdef MolBlock do_molblock(XDRUnpacker up,
+cdef MolBlock do_molblock(XDRThing *up,
                           TpxHeader header):
     cdef int type_, nmol, natoms
     cdef int i, nposresA, nposresB
 
-    type_ = up.unpack_int()
-    nmol = up.unpack_int()
-    natoms = up.unpack_int()
+    type_ = up.get_int32()
+    nmol = up.get_int32()
+    natoms = up.get_int32()
     # for A then B, the number of posres coords and the coords
     # skip past these sections
-    nposresA = up.unpack_int()
+    nposresA = up.get_int32()
     up.skip_real(nposresA)
-    nposresB = up.unpack_int()
+    nposresB = up.get_int32()
     up.skip_real(nposresB)
 
     return MolBlock(type_, nmol, natoms)
 
 
-cdef void skip_atom_types(XDRUnpacker up,
+cdef void skip_atom_types(XDRThing *up,
                           TpxHeader header):
     # skip through do_atomtypes
     cdef int ntypes
 
-    ntypes = up.unpack_int()
+    ntypes = up.get_int32()
     if header.file_version < 113:  # remove implicit solvation
         # skip nr real values
         up.skip_real(ntypes)
 
-    ntypes = up.unpack_int()
-    up.skip_int32(ntypes)  # atomnumbers?
+    ntypes = up.get_int32()
+    up.skip_int(ntypes)  # atomnumbers?
 
     if 60 <= header.file_version < 113:  # >=
         up.skip_real(ntypes)
         up.skip_real(ntypes)
 
 
-cdef void skip_cmaps(XDRUnpacker up):
+cdef void skip_cmaps(XDRThing *up):
     # skips through do_cmap section
     cdef int ngrid, grid_spacing, nelem
 
-    ngrid = up.unpack_int()
-    grid_spacing = up.unpack_int()
+    ngrid = up.get_int32()
+    grid_spacing = up.get_int32()
 
     nelem = grid_spacing * grid_spacing
     up.skip_real(ngrid * nelem * 4)
 
 
-cdef void skip_groups(XDRUnpacker up):
+cdef void skip_groups(XDRThing *up):
     # skips through do_groups
     cdef int i, ngroups
 
     # this is do_grps
     for i in range(10):
-        ngroups = up.unpack_int()
-        up.skip_int32(ngroups)
+        ngroups = up.get_int32()
+        up.skip_int(ngroups)
 
-    ngroups = up.unpack_int()  # number of group names
-    up.skip_int32(ngroups)  # skip group names
+    ngroups = up.get_int32()  # number of group names
+    up.skip_int(ngroups)  # skip group names
 
     for i in range(10):
-        ngroups = up.unpack_int()
+        ngroups = up.get_int32()
         up.skip_bool(ngroups)
 
 
@@ -825,47 +714,41 @@ cdef struct MTop:
     vector[MolBlock] molblocks
 
 
-cpdef MTop do_mtop(XDRUnpacker up,
+cdef MTop do_mtop(XDRThing *up,
                    TpxHeader header):
     cdef vector[stdstring] symtab
     cdef int i, nmoltype, nmolblock, natoms
-    cdef long long nexcl
+    cdef int64_t nexcl
     cdef MTop mtop = MTop()
     cdef cbool has_intermolecular_bonds
 
     mtop.symtab = do_symtab(up)
 
-    mtop.system_name = up.unpack_int()
+    mtop.system_name = up.get_int32()
 
     do_ffparams(up, header)
 
-    # print('after ff_params at: ', up.get_position())
-
-    nmoltype = up.unpack_int()
+    nmoltype = up.get_int32()
     for i in range(nmoltype):
         mtop.moltypes.push_back(do_moltype(up, header))
-        # print(f'after mol {i} at pos {up.get_position()}')
 
-    nmolblock = up.unpack_int()
+    nmolblock = up.get_int32()
     for i in range(nmolblock):
         mtop.molblocks.push_back(do_molblock(up, header))
-        # print(f'after molblock {i} at pos {up.get_position()}')
 
     # this next number should be natoms, so do a quick sanity check
-    natoms = up.unpack_int()
-
+    natoms = up.get_int32()
     if not natoms == header.natoms:
         raise ValueError("Post molblock natoms sanity check failed,. something is awry")
-
 
     return mtop
 
 
-cdef void skip_post_mtop_section(XDRUnpacker up,
+cdef void skip_post_mtop_section(XDRThing *up,
                                  TpxHeader header):
     # skips through section after do_mtop and before coordinates
     if header.file_version >= 103:  # intermolecular bonds added
-        has_intermolecular_bonds = up.unpack_bool()
+        has_intermolecular_bonds = up.get_bool()
         if has_intermolecular_bonds:
             # do another ilists, but discard the result
             do_ilists(up, header)
@@ -879,63 +762,64 @@ cdef void skip_post_mtop_section(XDRUnpacker up,
     skip_groups(up)
 
     if header.file_version >= 120:  # store nonbonded interaction excl
-        nexcl = up.unpack_int64()
-        up.skip_int32(nexcl)
+        nexcl = up.get_int64()
+        up.skip_int(nexcl)
 
 
-cpdef read_coordinates(bytes data):
+def read_coordinates(bytes data):
     """Returns box, positions and velocities (if present) from TPR data"""
-    cdef XDRUnpacker up
+    cdef XDRThing *up
     cdef TpxHeader header
     cdef int i
 
-    up = XDRUnpacker(data)
+    up = new XDRThing()
 
-    header = read_tpx_header(up)
-    if header.bBox:
-        box = extract_box_info(up, header)
-    else:
-        box = None
+    try:
+        up.set_stream(data)
 
-    skip_berendsen_section(up, header)
+        header = read_tpx_header(up)
+        if header.bBox:
+            box = extract_box_info(up, header)
+        else:
+            box = None
 
-    if header.bTop:
-        do_mtop(up, header)
+        skip_berendsen_section(up, header)
 
-    skip_post_mtop_section(up, header)
+        if header.bTop:
+            do_mtop(up, header)
 
-    if header.bX:
-        positions = extract_positions(up, header)
-    else:
-        positions = None
+        skip_post_mtop_section(up, header)
 
-    if header.bV:
-        velocities = extract_positions(up, header)
-    else:
-        velocities = None
+        if header.bX:
+            positions = extract_positions(up, header)
+        else:
+            positions = None
+
+        if header.bV:
+            velocities = extract_positions(up, header)
+        else:
+            velocities = None
+    finally:
+        del up
 
     return box, positions, velocities
 
 
-cpdef Box extract_box_info(XDRUnpacker up,
+cdef Box extract_box_info(XDRThing *up,
                            TpxHeader header):
     # follow code in do_tpx_state_first
     cdef Box b = Box()
     cdef int i
-    cdef double x
 
     for i in range(9):
-        x = up.unpack_real()
-        b.box[i] = x
+        b.box[i] = up.get_real()
 
     if header.file_version >= 51:  # pre96version51
         for i in range(9):
-            x = up.unpack_real()
-            b.box_rel[i] = x
+            b.box_rel[i] = up.get_real()
 
     for i in range(9):
-        x = up.unpack_real()
-        b.box_v[i] = x
+        b.box_v[i] = up.get_real()
 
     if header.file_version < 56:  # pre96version56
         up.skip_real(9)
@@ -943,7 +827,7 @@ cpdef Box extract_box_info(XDRUnpacker up,
     return b
 
 
-cdef void skip_berendsen_section(XDRUnpacker up,
+cdef void skip_berendsen_section(XDRThing *up,
                                  TpxHeader header):
     for i in range(header.ngtc):
         if header.file_version < 69:
@@ -953,23 +837,29 @@ cdef void skip_berendsen_section(XDRUnpacker up,
 
 def parse(bytes data, skip_top=False):
     """Create a MDA Topology from tpr file"""
-    cdef XDRUnpacker up
+    cdef XDRThing *up
     cdef TpxHeader header
     cdef MTop mtop
     cdef int i
 
-    up = XDRUnpacker(data)
+    up = new XDRThing()
 
-    header = read_tpx_header(up)
-    if header.bBox:
-        extract_box_info(up, header)
+    try:
+        up.set_stream(data)
 
-    skip_berendsen_section(up, header)
+        header = read_tpx_header(up)
 
-    if header.bTop:
-        mtop = do_mtop(up, header)
-    else:
-        raise ValueError
+        if header.bBox:
+            extract_box_info(up, header)
+
+        skip_berendsen_section(up, header)
+
+        if header.bTop:
+            mtop = do_mtop(up, header)
+        else:
+            raise ValueError
+    finally:
+        del up
 
     if skip_top:
         return mtop
@@ -1263,7 +1153,7 @@ def mtop_to_topology(MTop mtop):
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef object extract_positions(XDRUnpacker up,
+cdef object extract_positions(XDRThing *up,
                               TpxHeader header):
     # not sure on precision so just create both views and handle later
     cdef int i, natoms
@@ -1277,12 +1167,12 @@ cdef object extract_positions(XDRUnpacker up,
         singleprec_view = array
 
         for i in range(natoms * 3):
-            singleprec_view[i] = up.unpack_float()
+            singleprec_view[i] = up.get_float()
     else:
         array = np.empty(natoms * 3, dtype=np.float64)
         doubleprec_view = array
 
         for i in range(natoms * 3):
-            doubleprec_view[i] = up.unpack_double()
+            doubleprec_view[i] = up.get_double()
 
     return array.reshape(-1, 3)
