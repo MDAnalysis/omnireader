@@ -110,38 +110,45 @@ XDRThing::~XDRThing() {
 
 bool XDRThing::is_big_endian() const { return _impl->is_big_endian; }
 
-size_t XDRThing::get_float(float &output) {
+float XDRThing::get_float() {
+    float output;
     size_t s = _impl->get_float(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_double(double &output) {
+double XDRThing::get_double() {
+    double output;
     size_t s = _impl->get_double(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_uint16(unsigned short &output) {
+unsigned short XDRThing::get_uint16() {
+    unsigned short output;
     size_t s = _impl->get_uint16(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_int32(int &output) {
+int XDRThing::get_int32() {
+    int output;
     size_t s = _impl->get_int32(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_uint32(unsigned int &output) {
+unsigned int XDRThing::get_uint32() {
+    unsigned int output;
     size_t s = _impl->get_uint32(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_int64(int64_t &output) {
+int64_t XDRThing::get_int64() {
+    int64_t output;
     size_t s = _impl->get_int64(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }
-size_t XDRThing::get_uint64(uint64_t &output) {
+uint64_t XDRThing::get_uint64() {
+    uint64_t output;
     size_t s = _impl->get_uint64(ptr, output);
     ptr += s;
-    return s;
+    return output;
 }

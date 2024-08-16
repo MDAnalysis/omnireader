@@ -47,10 +47,10 @@ int main() {
 
     x.set_stream(buffer);
 
-    amt1 = x.get_float(a2);
-    amt2 = x.get_double(b2);
-    amt3 = x.get_int32(c2);
-    amt4 = x.get_uint64(d2);
+    a2 = x.get_float();
+    b2 = x.get_double();
+    c2 = x.get_int32();
+    d2 = x.get_uint64();
 
     std::cout << amt1 << " " << a2 << "\n";
     std::cout << amt2 << " " << b2 << "\n";

@@ -19,61 +19,43 @@ public:
     ~XDRThing();
 
     // fundamental get operations defined in impl
-    size_t get_float(float &output);
-    size_t get_double(double &output);
-    size_t get_uint16(unsigned short &output);
-    size_t get_int32(int &output);
-    size_t get_uint32(unsigned int &output);
-    size_t get_int64(int64_t &output);
-    size_t get_uint64(uint64_t &output);
+    float get_float();
+    double get_double();
+    unsigned short get_uint16();
+    int get_int32();
+    unsigned int get_uint32();
+    int64_t get_int64();
+    uint64_t get_uint64();
 
     // derived operations
-    size_t get_bool(bool &output) {
+    bool get_bool() {
         if (is_2020) {
-            output = ptr[0];
-            ptr += 1;
-            return 1;
+            bool output = *ptr++;
+            return output;
         } else {
-            int tmp;
-            get_int32(tmp);
-            output = tmp;
-
-            return 4;
+            return get_int32();
         }
     }
-    size_t get_uchar(unsigned char &output) {
+    unsigned char get_uchar() {
         if (is_2020) {
-            output = ptr[0];
-
-            ptr += 1;
-            return 1;
+            unsigned char output = *ptr++;
+            return output;
         } else {
-            int tmp;
-            get_int32(tmp);
-            output = tmp;
-
-            return 4;
+            return get_int32();
         }
     }
-    size_t get_ushort(unsigned int &output) {
+    unsigned int get_ushort() {
         if (is_2020) {
-            unsigned short tmp;
-            get_uint16(tmp);
-            output = tmp;
-
-            return 2;
+            return get_uint16();
         } else {
-            return get_uint32(output);
+            return get_uint32();
         }
     }
-    size_t get_real(double &output) {
+    double get_real() {
         if (double_precision) {
-            return get_double(output);
+            return get_double();
         } else {
-            float tmp;
-            size_t ret = get_float(tmp);
-            output = tmp;
-            return ret;
+            return get_float();
         }
     }
     std::string do_string() {
@@ -82,13 +64,13 @@ public:
         std::string out;
 
         if (is_2020) {
-            get_int64(i64);
+            i64 = get_int64();
 
             out = std::string(ptr, i64);
             ptr += i64;
         } else {
-            get_int32(i32);  // yes really
-            get_int32(i32);
+            i32 = get_int32();  // yes really
+            get_int32();
 
             out = std::string(ptr, i32);
 
