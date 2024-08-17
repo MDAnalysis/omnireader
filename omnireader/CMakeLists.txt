@@ -13,6 +13,11 @@ python_extension_module(xyzreader)
 target_link_libraries(xyzreader omnireader)
 target_link_libraries(xyzreader FastFloat::fast_float)
 
+add_cython_target(xdrfile CXX PY3 xdrfile.pyx)
+add_library(xdrfile MODULE ${xdrfile})
+python_extension_module(xdrfile)
+target_link_libraries(xdrfile omnireader)
+
 add_cython_target(linesupplier CXX PY3 linesupplier.pyx)
 add_library(linesupplier MODULE ${linesupplier})
 python_extension_module(linesupplier)
@@ -27,5 +32,5 @@ else()
     set_target_properties(xyzreader PROPERTIES INSTALL_RPATH "\$ORIGIN")
 endif()
 
-install(TARGETS groreader xyzreader linesupplier
+install(TARGETS groreader xyzreader linesupplier xdrfile
      LIBRARY DESTINATION omnireader)
